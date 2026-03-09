@@ -106,7 +106,7 @@ Be aware that the current orchestration is designed such that the Service, Code 
 ## About this Project
 
 Project Home Page:
-https://labs.google/code/experiments/momoa-reaearcher
+https://labs.google/code/experiments/momoa-researcher
 
 Code Home:
 https://github.com/retomeier/momoa
