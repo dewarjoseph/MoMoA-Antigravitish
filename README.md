@@ -106,10 +106,10 @@ Be aware that the current orchestration is designed such that the Service, Code 
 ## About this Project
 
 Project Home Page:
-https://labs.google/code/experiments/momoa-researcher
+[https://labs.google/code/experiments/momoa-researcher](https://labs.google/code/experiments/momoa-researcher)
 
 Code Home:
-https://github.com/retomeier/momoa
+[https://github.com/retomeier/momoa](https://github.com/retomeier/MoMoA-Researcher)
 
 Maintained by:
 Reto Meier
