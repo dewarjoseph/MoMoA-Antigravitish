@@ -21,13 +21,13 @@ import { spawn } from 'child_process';
 import { MultiAgentTool } from '../multiAgentTool.js';
 import { MultiAgentToolResult, MultiAgentToolContext, ToolParsingResult } from '../../momoa_core/types.js';
 import { addDynamicallyRelevantFile, updateFileEntry } from '../../utils/fileAnalysis.js';
-import { logFilename, MAX_MEM_PERCENTAGE } from '../../config/config.js';
+import { logFilename, MAX_MEM_PERCENTAGE, MAX_SCRIPT_EXECUTION_TIMEOUT } from '../../config/config.js';
 
 const LARGE_FILE_LIMIT_KB = 100;
 const MAX_CONTEXT_FILE_SIZE_BYTES = 100 * 1024 * 1024;
 const PYTHON_REQUIRED_DEPS: string[] = [];//["numpy"]; 
 const INSTALL_TIMEOUT_MS = 300000; // 5 minutes for installation
-const EXECUTION_TIMEOUT_MS = 600000; // 10 minutes for script execution
+const EXECUTION_TIMEOUT_MS = MAX_SCRIPT_EXECUTION_TIMEOUT; // 10 minutes for script execution
 const DEPS_DIR_NAME = '_momoa_deps'; // Directory to isolate dependencies
 
 // Helper: Run script using spawn to avoid maxBuffer issues

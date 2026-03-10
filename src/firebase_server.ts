@@ -73,7 +73,7 @@ const runningSessions: Map<string, RunningSession> = new Map();
 
 const runnerInstanceId = randomUUID();
 
-const SERVER_MAX_DURATION_MS = 60 * 60 * 1000;
+const SERVER_MAX_DURATION_MS = 55 * 60 * 1000;
 const SERVER_GRACE_PERIOD_MS = 5 * 60 * 1000;
 
 export async function runSession(

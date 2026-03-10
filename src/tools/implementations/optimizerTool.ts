@@ -21,10 +21,10 @@ import { spawn } from 'child_process';
 import { MultiAgentTool } from '../multiAgentTool.js';
 import { MultiAgentToolResult, MultiAgentToolContext, ToolParsingResult } from '../../momoa_core/types.js';
 import { addDynamicallyRelevantFile, updateFileEntry } from '../../utils/fileAnalysis.js';
-import { MAX_MEM_PERCENTAGE } from '../../config/config.js';
+import { MAX_MEM_PERCENTAGE, MAX_SCRIPT_EXECUTION_TIMEOUT } from '../../config/config.js';
 
 const MAX_TOTAL_RUNS = 200;
-const TIMEOUT = 10 * 60 * 1000;
+const TIMEOUT = MAX_SCRIPT_EXECUTION_TIMEOUT;
 const LARGE_FILE_LIMIT_KB = 100;
 
 // Helper: Calculate Mean and Standard Deviation
