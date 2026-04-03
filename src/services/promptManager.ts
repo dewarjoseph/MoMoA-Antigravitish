@@ -56,7 +56,7 @@ async function loadPromptsRecursive(directory: string, relativePath: string = ''
     } else if (entry.isFile() && entry.name.endsWith('.md')) {
       const fileContent = await fs.readFile(fullPath, 'utf-8');
       const { content, data } = matter(fileContent);
-      const promptKey = currentRelativePath.replace(/\.md$/, '');
+      const promptKey = currentRelativePath.replace(/\\/g, '/').replace(/\.md$/, '');
 
       rawPrompts.set(promptKey, { content, metadata: data as PromptMetadata });
     }

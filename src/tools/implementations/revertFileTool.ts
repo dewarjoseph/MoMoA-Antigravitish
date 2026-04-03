@@ -38,7 +38,7 @@ export async function updateDiffInAllTranscripts(context: MultiAgentToolContext)
     transcript.replaceEntry(docId, newDiffBlock);
   });
   
-  console.log(`Updated diff block '${docId}' in all registered transcripts.`);
+  console.error(`Updated diff block '${docId}' in all registered transcripts.`);
 }
 
 export const PROJECT_DIFF_ID = "PROJECT_DIFF_ID";

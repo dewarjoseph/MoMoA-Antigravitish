@@ -1,118 +1,69 @@
-# Mixture of Mixture of Agents - Researcher
+# MoMo Overseer (Antigravity Edition)
 
-Coordinate multiple AI agents to iteratively investigate complex research questions by proposing hypotheses, executing local Python or Rust experiments, evaluating outcomes, and generating academic reports.
+**MoMo Overseer** is an autonomous, headless CLI daemon and [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server built to iteratively orchestrate developer workloads using Google's generative models.
 
-----
+Originally branched from the UI-bound Firebase prototype [MoMoA-Researcher](https://github.com/retomeier/MoMoA-Researcher), this repository has been thoroughly sanitized of all frontend bloat (React, Firebase, WebSockets, Express) to operate natively as a pure terminal pipeline inside your isolated development environment.
 
-MoMoA (Mixture of Mixture of Agents) Researcher is a full-stack application. The primary workflow involves defining a research objective in the React frontend, which pushes task definitions to a Firebase Realtime Database. A Node.js server listens for these queues, cloning required repositories into memory and spinning up specialized agent roles to run experiments.
+## Architecture
 
-It is an extension / adaptation of the [Mixture of Mixture of Agents SDLC Agent](https://labs.google/code/experiments/momoa).
-
-The `DashboardPage.tsx` shows how a research session is started from the User Interface.
-The `ResearchProjectPage.tsx` shows how session updates are displayed to the user, and implements the continuous research loop.
-
-----
-
-This system builds on the Experts, Work Phases, and Tools of the MoMoA Agent. It adds a "Senior Researcher", "Research Room", and Research Tools to conduct experiments using the scientific method.
-
-## Research Tools
-
-To prevent agents from wasting time inventing identical tooling, MoMoA Researcher provides specific tools that operate within the agent's virtual machine.
-
-* **The Optimizer**: Evaluates Python or Rust functions concurrently to explore large mathematical search spaces.
-  * *Usage*: Finds theoretical maximums across discrete grids or random float/integer distributions.
-  * *Constraints*: Limited to a maximum of 200 total runs (5 concurrent) within a 10-minute timeout to control compute costs.
-
-* **Code Runner**: Executes pure Python or Rust scripts using a restricted set of pre-installed libraries within the Research Agent's VM.
-  * *Constraints*: Limited to a 10-minute timeout to control compute costs.
-
-* **Research Logger**: An append-only logging mechanism to track experimental results across Work Phases and research sessions.
-  * *Usage*: Enforces strict scientific tracking. Agents must record hypotheses, experimental data, and analysis here before modifying overarching reports.
-
-## UI & Orchestration Features
-
-The React frontend enables project and task initiation, visualizes the agent's work, and facilitates human oversight.
-
-* **Research Projects**: A hierarchical workspace where an overarching goal (e.g., "Find the longest Collatz sequence") contains multiple individual research sessions/tasks.
-* **Interrogation Chat**: A chat interface that persists the full context of previous tasks, modified files, and session logs, allowing you to question the agent about its methodologies during or after a run.
-* **Self-Evaluation & Continuous Loop**: After a task, the agent grades its own performance and proposes the next logical experiments. Toggling "Auto-run top suggestion" will execute these sequentially without human intervention.
+The system executes AI work phases strictly in an unattended `[Headless Mode]` using a `.swarm/` local disk manifest.
+* **Local Persistence:** All logging, work transcripts, and session tracking states operate over standard NodeJS `fs` modules entirely inside the `.swarm/` map. No external databases are required.
+* **Zero Ram Footprint:** A `LazyMap` filesystem crawler ensures huge monolith codebases can be discovered and reasoned over dynamically without causing background V8 memory leaks.
+* **MCP Integration:** A bridged `stdio` pipeline exposes `MoMoA`'s 15+ native agentic internal tools dynamically into an MCP-compatible host client. Tools automatically parse standard parameters, dispatch LLMs using API rate-limiting guardrails, and execute file mutations directly to your hard drive.
 
 ## Setup & Configuration
 
-This project is built using a Node.js backend (`tsx`, `express`) and a React/Vite frontend. It relies heavily on Firebase Realtime Database for state synchronization between the client and the orchestrator.
+This project requires `NodeJS` and is executed via a built `.js` bundle relying locally on AST compilation and text resolution.
 
 **1. Clone and Install Dependencies**
-The project uses `concurrently` to run both web and server environments.
-
 ```bash
 npm install
+npm run build
 ```
 
-**2. Configure Firebase**
+**2. Configure Environment Variables**
 
-This project uses Firebase to store details on each project and session. To use the UI, you will need to create your own Firebase project and provide your own client and server-side configuration details.
+Before launching the daemon, provide your runtime credentials.
+* `GEMINI_API_KEY`: Required string to invoke Google's reasoning loops.
+* `JULES_API_KEY`: Used to spin up distributed swarm branches natively.
+* `GITHUB_TOKEN`: Utilized for native issue retrieval tools and git tracking.
+* `MOMO_WORKING_DIR`: Sets the target `process.cwd()` boundary condition. Defaults to the launch folder.
 
-**2.1. Create a Firebase Project**
+## Operating The Daemon
 
-* Go to the [Firebase Console](https://console.firebase.google.com/).
-* Click **Add project** and follow the on-screen instructions.
+Because it's a CLI tool, you can invoke the pipeline natively from any terminal in your environment:
 
-**2.2. Register a Web App**
-
-* In your new Firebase project dashboard, click the **Web** icon (`</>`) to add a new web app.
-* Give your app a nickname and click **Register app**.
-
-**2.3. Get Your Client Configuration**
-
-* After registering, Firebase will provide you with a Firebase Config object containing your API keys and identifiers. This should be placed in the `web/src/firebase-config.ts` file:
-
-**2.4. Generate the Service Account Key (Admin SDK)**
-Now create server-side administrative access:
-* In the Firebase Console, click the gear icon next to **Project Overview** in the top left and select **Project settings**.
-* Navigate to the **Service accounts** tab.
-* Click the **Generate new private key** button at the bottom, then click **Generate key** to confirm.
-* A JSON file containing your service account credentials will securely download to your machine.
-
-**2.5. Add the Service Account File**
-* Rename the downloaded JSON file to `.firebase-service-account.json`.
-* Move this file into the root directory of your local project repository.
-* **Security Warning:** Never commit this file to version control. It grants full administrative control over your Firebase project database and auth.
-
-**2.6. Link the Firebase CLI (Optional but required for deploying/functions)**
-If you need to deploy Firebase Functions, Security Rules, or Hosting, you must link your local environment to your Firebase project using the Firebase CLI.
-* If you don't have the CLI installed, install it by running: `npm install -g firebase-tools`
-* Log in to the Firebase CLI:
+### Direct Action:
 ```bash
-firebase login
-```
-* Link this local directory to your Firebase project:
-```bash
-firebase use --add
-```
-* When prompted, select the Firebase project you created in Step 1 and type `default` as the alias. This will automatically generate a `.firebaserc` file for you.
+# Begin tracking swarm deployment tasks
+node dist/cli.js swarm monitor
 
-**3. Run the application**
-Start the frontend and backend simultaneously:
-
-```bash
-npm run dev
+# Evaluate and self-review pending AI tickets
+node dist/cli.js swarm triage
 ```
 
-This triggers both `npm run dev:web` (Vite on standard port) and `npm run dev:server` (Node server on port 3007).
+### The MCP Daemon (Antigravity):
+```json
+{
+  "mcpServers": {
+    "momo-overseer": {
+      "command": "node",
+      "args": [
+        "dist/cli.js",
+        "daemon"
+      ],
+      "env": {
+        "MOMO_WORKING_DIR": "C:/Path/To/Your/Target/Repo"
+      }
+    }
+  }
+}
+```
 
-## Limitations
-Be aware that the current orchestration is designed such that the Service, Code Runner, and Optimier all run within the same VM. If you are doing heavy algorithmic optimization, the compute bottleneck is significant. Scaled deployments would require modifying the Optimizer and Code Runner to spin up parallelized infrastructure.
+## System Hooks & Safety Bounds
 
-## About this Project
-
-Project Home Page:
-[https://labs.google/code/experiments/momoa-researcher](https://labs.google/code/experiments/momoa-researcher)
-
-Code Home:
-[https://github.com/retomeier/MoMoA-Researcher](https://github.com/retomeier/MoMoA-Researcher)
-
-Maintained by:
-Reto Meier
+* **Logging Interception:** The script patches native Node `console.log` inside the execution layers to strictly `console.error` to secure the MCP JSON connection from uncontrolled strings.
+* **No `HITL` Breakpoints:** Because operations happen invisibly out-of-band during the MCP integration, pausing for Human-In-The-Loop review forces automatic polling to avoid system deadlocks.
 
 ## License
-This project is licensed under the Apache 2 License - see the [license.md](LICENSE) file for details.
+This project is licensed under the Apache 2 License - see the `license.md` file for details.

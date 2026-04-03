@@ -46,7 +46,7 @@ import { checkContainerMemory } from '../utils/memoryChecker.js';
 const EXISTING_FILES_ID = "EXISTING_FILES_ID";
 const EXISTING_FAQ_ID = "EXISTING_FAQ_ID";
 const PROJECT_DEFINITION_ID = 'project-definition';
-const FORCE_NO_HITL = false;
+const FORCE_NO_HITL = true; // Headless mode: always auto-approve
 
 /**
  * The Orchestrator class manages the multi-agent system,

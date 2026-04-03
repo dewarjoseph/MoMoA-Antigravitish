@@ -55,7 +55,7 @@ async function saveFile(sessionId: string, filename: string, fileContent: string
 
     await fs.mkdir(dirPath, { recursive: true });
     await fs.writeFile(fullPath, fileContent, 'utf8');
-    console.log(`File saved successfully to ${fullPath}`);
+    console.error(`File saved successfully to ${fullPath}`);
 }
 
 /**
@@ -126,7 +126,7 @@ function processExecution(command: string, args: string[], filename: string, ful
 
         // Use 'spawn' for security to prevent command injection by keeping
         // command and arguments separate.
-        console.log("Execute: " + command + " " + args.join(' '));
+        console.error("Execute: " + command + " " + args.join(' '));
 
         const cmdLineProcess = spawn(command, args, { 
           shell: false, 

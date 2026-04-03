@@ -204,7 +204,7 @@ export const fileReaderTool: MultiAgentTool = {
  * Helper function to determine MIME type from filename extension for 
  * supported binary types: Images, PDFs, Audio, and Video.
  */
-function getBinaryMimeType(filename: string): string | null {
+export function getBinaryMimeType(filename: string): string | null {
     const ext = filename.split('.').pop()?.toLowerCase();
     switch (ext) {
         // Images
