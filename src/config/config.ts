@@ -49,6 +49,11 @@ export interface ConfigParameters {
   model: string;
   maxTurns?: number; // Added maxTurns
   assumptions?: string; // Added assumptions
+  
+  // External MCP Bridges
+  enableStitchMcp?: boolean;
+  enableBrowserMcp?: boolean;
+  enableSuperQuantSequential?: boolean;
 }
 
 export class Config implements InfrastructureContext {
@@ -58,6 +63,11 @@ export class Config implements InfrastructureContext {
   private readonly debugMode: boolean;
   private readonly question: string | undefined;
   private readonly fullContext: boolean;
+  
+  // External MCP configurations
+  public readonly enableStitchMcp: boolean;
+  public readonly enableBrowserMcp: boolean;
+  public readonly enableSuperQuantSequential: boolean;
   private readonly coreTools: string[] | undefined;
   private readonly excludeTools: string[] | undefined;
   private geminiClient!: GeminiClient;
@@ -79,6 +89,9 @@ export class Config implements InfrastructureContext {
     this.model = params.model;
     this.maxTurns = params.maxTurns; // Initialize maxTurns from params
     this.assumptions = params.assumptions; // Initialize assumptions from params
+    this.enableStitchMcp = params.enableStitchMcp ?? process.env.ENABLE_STITCH_MCP === 'true';
+    this.enableBrowserMcp = params.enableBrowserMcp ?? process.env.ENABLE_BROWSER_MCP === 'true';
+    this.enableSuperQuantSequential = params.enableSuperQuantSequential ?? process.env.ENABLE_SUPER_QUANT_SEQUENTIAL === 'true';
   }
 
   async refreshAuth(authMethod: AuthType, options?: Record<string, string>) {

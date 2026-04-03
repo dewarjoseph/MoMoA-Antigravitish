@@ -39,7 +39,7 @@ const runScript = (
     timeoutMs: number
 ) => {
     return new Promise<{stdout: string, stderr: string, timedOut: boolean, exitCode: number | null}>((resolve, reject) => {
-        const child = spawn(cmd, args, { cwd, env });
+        const child = spawn(cmd, args, { cwd, env, shell: true });
         
         let stdout = '';
         let stderr = '';
@@ -107,106 +107,117 @@ export const CodeRunnerTool: MultiAgentTool = {
     const files = params['files'] as string[];
 
     // 1. Validation
-    if (!files || files.length === 0) {
-      updateProgress("Error: No files provided to execute.");
-      return { result: "Error: No files provided to execute." };
+    const explicitCommand = params['command'] as string | undefined;
+
+    if (!explicitCommand && (!files || files.length === 0)) {
+      updateProgress("Error: No files or 'command' provided to execute.");
+      return { result: "Error: No files or 'command' provided to execute." };
     }
 
-    const mainScript = files[0];
-    const otherFiles = files.slice(1);
-    const ext = path.extname(mainScript).toLowerCase();
-    const isRust = ext === '.rs';
-    const isPython = ext === '.py';
+    if (!explicitCommand && files.length > 0) {
+        const mainScript = files[0];
+        const ext = path.extname(mainScript).toLowerCase();
+        const isRust = ext === '.rs';
+        const isPython = ext === '.py';
 
-    if (!isRust && !isPython) {
-        updateProgress(`Error: Unsupported file type '${ext}'`);
-        return { result: `Error: Unsupported file type '${ext}'. Please provide .py or .rs files.` };
+        if (!isRust && !isPython) {
+            updateProgress(`Error: Unsupported auto-execution file type '${ext}'. Please provide a specific 'command' for this file type.`);
+            return { result: `Error: Unsupported file type '${ext}'. Please provide a specific 'command' (e.g. 'gcc ${mainScript}') or use .py/.rs files.` };
+        }
     }
 
     // 2. Prepare Temp Directory
     let tempDir = '';
     try {
-        tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'momoa-run-'));
-        
-        // --- Dependency Setup ---
-        const depsPath = path.join(os.tmpdir(), DEPS_DIR_NAME);
-        await fs.mkdir(depsPath, { recursive: true });
+        const projectRoot = process.env.MOMO_WORKING_DIR || process.cwd();
+        let executionEnv = { ...process.env };
+        let depsPath = '';
 
-        // Python Dependencies
-        if (isPython && PYTHON_REQUIRED_DEPS.length > 0) {
-            try {
-                await runScript('python3', ['-m', 'pip', 'install', '--target', depsPath, ...PYTHON_REQUIRED_DEPS], tempDir, process.env, INSTALL_TIMEOUT_MS);
-            } catch (e) {
-                 updateProgress(`Dependency Installation Failed: ${e}`);
-                 return { result: `Dependency Installation Failed: ${e}` };
+        if (files.length > 0) {
+            tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'momoa-run-'));
+            depsPath = path.join(os.tmpdir(), DEPS_DIR_NAME);
+            await fs.mkdir(depsPath, { recursive: true });
+
+            const isPythonReq = files.some(f => f.endsWith('.py'));
+            if (isPythonReq && PYTHON_REQUIRED_DEPS.length > 0) {
+                try {
+                    const pyPipCmd = os.platform() === 'win32' ? 'python' : 'python3';
+                    await runScript(pyPipCmd, ['-m', 'pip', 'install', '--target', depsPath, ...PYTHON_REQUIRED_DEPS], tempDir, process.env, INSTALL_TIMEOUT_MS);
+                } catch (e) {
+                     updateProgress(`Dependency Installation Failed: ${e}`);
+                     return { result: `Dependency Installation Failed: ${e}` };
+                }
             }
-        }
 
-        // 3. Stage Files
-        const stageFile = async (fileName: string) => {
-             const content = context.fileMap.get(fileName);
-             const targetPath = path.join(tempDir, fileName);
-             const targetDir = path.dirname(targetPath);
+            // 3. Stage Files
+            const stageFile = async (fileName: string) => {
+                 const content = context.fileMap.get(fileName);
+                 const targetPath = path.join(tempDir, fileName);
+                 const targetDir = path.dirname(targetPath);
 
-             await fs.mkdir(targetDir, { recursive: true });
+                 await fs.mkdir(targetDir, { recursive: true });
 
-             if (content === undefined) {
-                 if (context.binaryFileMap.has(fileName)) {
-                     const buf = Buffer.from(context.binaryFileMap.get(fileName)!, 'base64');
-                     await fs.writeFile(targetPath, buf);
-                     return;
+                 if (content === undefined) {
+                     if (context.binaryFileMap.has(fileName)) {
+                         const buf = Buffer.from(context.binaryFileMap.get(fileName)!, 'base64');
+                         await fs.writeFile(targetPath, buf);
+                         return;
+                     }
+                     throw new Error(`File '${fileName}' not found in context.`);
                  }
-                 throw new Error(`File '${fileName}' not found in context.`);
-             }
-             await fs.writeFile(targetPath, content, 'utf8');
-        };
+                 await fs.writeFile(targetPath, content, 'utf8');
+            };
 
-        await stageFile(mainScript);
-        for (const file of otherFiles) {
-            await stageFile(file);
-        }
+            for (const file of files) {
+                await stageFile(file);
+            }
+        } // <--- Added missing bracket closure!
 
         // 4. Execution Logic
         let cmd = '';
         let args: string[] = [];
-        let executionEnv = { ...process.env };
         let compileOutput = '';
 
-        // Calculate 80% of currently free memory in Kilobytes
         const freeMemKB = Math.floor(os.freemem() / 1024);
         const memLimitKB = Math.floor(freeMemKB * MAX_MEM_PERCENTAGE);
         const memLimitMB = Math.floor(memLimitKB / 1024);
 
-        if (isPython) {
-            updateProgress(`Executing Python script \`${mainScript}\` (Capped at ${memLimitMB}MB due to underlying hardware contraints)`);
+        const isWin = os.platform() === 'win32';
+        const prefix = isWin ? '' : `ulimit -v ${memLimitKB} && `;
+
+        if (explicitCommand) {
+             updateProgress(`Executing custom shell command...`);
+             cmd = isWin ? explicitCommand : 'sh';
+             args = isWin ? [] : ['-c', explicitCommand];
+        } else if (files.some(f => f.endsWith('.py'))) {
+            const mainScript = files[0];
+            updateProgress(`Executing Python script \`${mainScript}\` (Capped at ${memLimitMB}MB due to underlying hardware constraints)`);
             
-            cmd = 'sh';
-            // Apply the dynamic memory limit via ulimit before running python
-            args = ['-c', `ulimit -v ${memLimitKB} && python3 ${mainScript}`];
+            const pyCmd = isWin ? 'python' : 'python3';
+            cmd = isWin ? pyCmd : 'sh';
+            args = isWin ? [mainScript] : ['-c', `${prefix}${pyCmd} ${mainScript}`];
             
             executionEnv = {
-                ...process.env,
+                ...executionEnv,
                 PYTHONPATH: tempDir + path.delimiter + depsPath + path.delimiter + (process.env.PYTHONPATH || ''),
                 PYTHONUNBUFFERED: '1'
             };
         }
-        else if (isRust) {
-            // Check for Cargo.toml in the staged files
+        else if (files.some(f => f.endsWith('.rs'))) {
+            const mainScript = files[0];
             const hasCargo = files.some(f => f.endsWith('Cargo.toml'));
 
             if (hasCargo) {
                 updateProgress(`Executing Rust Project (Cargo) (Capped at ${memLimitMB}MB)`);
-                
-                cmd = 'sh';
-                args = ['-c', `ulimit -v ${memLimitKB} && cargo run --release --quiet`];
+                cmd = isWin ? 'cargo' : 'sh';
+                args = isWin ? ['run', '--release', '--quiet'] : ['-c', `${prefix}cargo run --release --quiet`];
             } else {
-                updateProgress(`Compiling and Executing Rust script \`${mainScript}\` (Execution capped at ${memLimitMB}MB due to underlying hardware contraints)`);
+                updateProgress(`Compiling and Executing Rust script \`${mainScript}\` (Execution capped at ${memLimitMB}MB due to underlying hardware constraints)`);
                 
                 const binaryName = 'main_bin';                
-                // 1. Compile a memory cap to protect the container from runaway compilation
                 const compileRes = await runScript(
-                    'sh', 
-                    ['-c', `ulimit -v ${memLimitKB} && rustc ${mainScript} -o ${binaryName}`], 
+                    isWin ? 'rustc' : 'sh', 
+                    isWin ? [mainScript, '-o', binaryName] : ['-c', `${prefix}rustc ${mainScript} -o ${binaryName}`], 
                     tempDir, 
                     process.env, 
                     INSTALL_TIMEOUT_MS
@@ -218,18 +229,19 @@ export const CodeRunnerTool: MultiAgentTool = {
                 
                 if (compileRes.stderr) compileOutput += `[Compilation Warning]: ${compileRes.stderr}\n`;
 
-                // 2. Execute the resulting binary WITH the same memory cap
                 const binaryPath = path.join(tempDir, binaryName);
-                cmd = 'sh';
-                args = ['-c', `ulimit -v ${memLimitKB} && ${binaryPath}`];
+                const safeBinPath = isWin ? binaryPath : `./${path.basename(binaryPath)}`;
+                cmd = isWin ? safeBinPath : 'sh';
+                args = isWin ? [] : ['-c', `${prefix}${safeBinPath}`];
             }
         }
 
         // Run the command
+        const execCwd = files.length > 0 ? tempDir : projectRoot;
         const { stdout, stderr, timedOut, exitCode } = await runScript(
             cmd, 
             args, 
-            tempDir, 
+            execCwd, 
             executionEnv, 
             EXECUTION_TIMEOUT_MS
         );
@@ -248,7 +260,7 @@ export const CodeRunnerTool: MultiAgentTool = {
 
         // 5. Post-Execution: Scan for Output Files
         const normalizedInputFiles = new Set(files.map(f => path.normalize(f)));
-        if (isRust) normalizedInputFiles.add('main_bin'); // Exclude the binary we created
+        normalizedInputFiles.add('main_bin'); // Exclude the compiled binary we created (if any)
 
         const getFilesRecursively = async (dir: string): Promise<string[]> => {
             const entries = await fs.readdir(dir, { withFileTypes: true });

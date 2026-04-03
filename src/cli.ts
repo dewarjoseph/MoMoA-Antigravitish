@@ -86,14 +86,20 @@ swarm
 swarm
   .command('monitor')
   .description('Start the polling daemon to monitor, approve, and pull swarm sessions')
-  .requiredOption('--sessions <ids>', 'Comma-separated session IDs', (val: string) => val.split(','))
+  .option('--sessions <ids>', 'Comma-separated session IDs', (val: string) => val.split(','))
   .option('-i, --interval <ms>', 'Poll interval in milliseconds', parseInt, 120_000)
   .option('-m, --max-polls <n>', 'Maximum number of polls', parseInt, 120)
   .option('-r, --repo-root <dir>', 'Local repo root for pulling diffs', process.cwd())
   .option('-s, --strategies <list>', 'Comma-separated strategy names', (val: string) => val.split(','))
   .action(async (opts) => {
+    const sessionIds = opts.sessions || store.listSessions().map(s => s.id);
+    if (!sessionIds || sessionIds.length === 0) {
+      console.log('No sessions exist to monitor. Please run `swarm dispatch` or provide `--sessions <ids>`.');
+      return;
+    }
+
     const poller = new SessionPoller({
-      sessionIds: opts.sessions,
+      sessionIds: sessionIds,
       strategies: opts.strategies ?? DEFAULT_STRATEGIES,
       pollIntervalMs: opts.interval,
       maxPolls: opts.maxPolls,
@@ -106,12 +112,18 @@ swarm
 swarm
   .command('triage')
   .description('Run a single triage pass: approve waiting plans and pull completed diffs')
-  .requiredOption('--sessions <ids>', 'Comma-separated session IDs', (val: string) => val.split(','))
+  .option('--sessions <ids>', 'Comma-separated session IDs', (val: string) => val.split(','))
   .option('-r, --repo-root <dir>', 'Local repo root for pulling diffs', process.cwd())
   .option('-s, --strategies <list>', 'Comma-separated strategy names', (val: string) => val.split(','))
   .action(async (opts) => {
+    const sessionIds = opts.sessions || store.listSessions().map(s => s.id);
+    if (!sessionIds || sessionIds.length === 0) {
+      console.log('No sessions exist to triage. Please run `swarm dispatch` or provide `--sessions <ids>`.');
+      return;
+    }
+
     const poller = new SessionPoller({
-      sessionIds: opts.sessions,
+      sessionIds: sessionIds,
       strategies: opts.strategies ?? DEFAULT_STRATEGIES,
       store,
     });

@@ -44,7 +44,7 @@ const runScript = (
     timeoutMs: number
 ) => {
     return new Promise<{stdout: string, stderr: string, timedOut: boolean, exitCode: number | null}>((resolve, reject) => {
-        const child = spawn(cmd, args, { cwd, env });
+        const child = spawn(cmd, args, { cwd, env, shell: true });
         
         let stdout = '';
         let stderr = '';
@@ -117,21 +117,23 @@ export const OptimizerTool: MultiAgentTool = {
     const budget = Number(params['budget']) || 0;
     const trials = Number(params['trials']) || 1;
 
-    const isRust = evalScript.endsWith('.rs');
-    const isPython = evalScript.endsWith('.py');
-
-    updateProgress(`Conducting Optimization (${isRust ? 'Rust' : 'Python'}):\n* Evaluator: \`${evalScript}\`\n* Goal: ${goal}\n* Budget: ${budget}\n* Trials: ${trials}`);
-
     // Support "module:function" syntax for Evaluator (Driver)
     let entryPointFunction = null;
     if (evalScript.includes(':')) {
-        if (isRust) {
-             return { result: "Error: Syntax `script:function` is only supported for Python. For Rust, the binary must run directly." };
-        }
         const parts = evalScript.split(':');
         evalScript = parts[0];       
         entryPointFunction = parts[1]; 
     }
+
+    const isRust = evalScript.endsWith('.rs');
+    const isPython = evalScript.endsWith('.py');
+    const isNode = evalScript.endsWith('.ts') || evalScript.endsWith('.js');
+
+    if (evalScript.includes(':') && isRust) {
+        return { result: "Error: Syntax `script:function` is only supported for Python/Node. For Rust, the binary must run directly." };
+    }
+
+    updateProgress(`Conducting Optimization (${isRust ? 'Rust' : isNode ? 'Node.js' : 'Python'}):\n* Evaluator: \`${evalScript}\`\n* Goal: ${goal}\n* Budget: ${budget}\n* Trials: ${trials}`);
 
     // Dependencies Logic
     let dependencies: string[] = [];
@@ -283,9 +285,11 @@ export const OptimizerTool: MultiAgentTool = {
                 
                 // Single File Compilation
                 executableScript = 'optimizer_driver';
+                const isWin = os.platform() === 'win32';
+                const prefix = isWin ? '' : `ulimit -v ${compilerLimitKB} && `;
                 const res = await runScript(
-                    'sh', 
-                    ['-c', `ulimit -v ${compilerLimitKB} && rustc ${evalScript} -o ${executableScript}`], 
+                    isWin ? 'rustc' : 'sh', 
+                    isWin ? [evalScript, '-o', executableScript] : ['-c', `${prefix}rustc ${evalScript} -o ${executableScript}`], 
                     tempDir, 
                     process.env, 
                     TIMEOUT
@@ -293,6 +297,20 @@ export const OptimizerTool: MultiAgentTool = {
                 if (res.exitCode !== 0) return { result: `Rust Compilation Failed:\n${res.stderr}` };
             }
         } 
+        else if (isNode && entryPointFunction) {
+            const moduleName = path.basename(evalScript, path.extname(evalScript));
+            const wrapperContent = `
+const mod = require('./${moduleName}');
+Promise.resolve(mod.${entryPointFunction}()).then(result => {
+    console.log('[OPTIMIZER_METRIC]: ' + result);
+}).catch(e => {
+    console.error('Wrapper Error: ' + e);
+    process.exit(1);
+});
+`;
+            executableScript = `__momoa_wrapper_${moduleName}.js`;
+            await fs.writeFile(path.join(tempDir, executableScript), wrapperContent, 'utf8');
+        }
         else if (isPython && entryPointFunction) {
             const moduleName = path.basename(evalScript, '.py');
             const wrapperContent = `
@@ -323,11 +341,14 @@ except Exception as e:
                 };
                 
                 let cmd = '', args: string[] = [];
+                const isWin = os.platform() === 'win32';
                 if (isRust) {
                     if (hasCargo) { cmd = 'cargo'; args = ['run', '--release', '--quiet']; }
                     else { cmd = path.join(tempDir, executableScript); args = []; }
+                } else if (isNode) {
+                    cmd = isWin ? 'npx.cmd' : 'npx'; args = ['tsx', executableScript];
                 } else {
-                    cmd = 'python3'; args = [executableScript];
+                    cmd = os.platform() === 'win32' ? 'python' : 'python3'; args = [executableScript];
                 }
 
                 const { stdout, stderr, timedOut, exitCode } = await runScript(cmd, args, tempDir, dryRunEnv, TIMEOUT);
@@ -393,20 +414,35 @@ except Exception as e:
                     
                     // Specific logic for binaries
                     let cmd = '', args: string[] = [];
+                    const isWin = os.platform() === 'win32';
+                    const prefix = isWin ? '' : `ulimit -v ${memLimitKB} && `;
+                    
                     if (isRust) {
                         if (hasCargo) {
                              // Symlink target dir to avoid recompiling
                              try { await fs.symlink(path.join(tempDir, 'target'), path.join(trialDir, 'target')); } catch(e){}
-                             cmd = 'sh'; 
-                             args = ['-c', `ulimit -v ${memLimitKB} && cargo run --release --quiet`];
+                             cmd = isWin ? 'cargo' : 'sh'; 
+                             args = isWin ? ['run', '--release', '--quiet'] : ['-c', `${prefix}cargo run --release --quiet`];
                         } else {
                              // Symlink binary
                              const binSource = path.join(tempDir, executableScript);
                              const binDest = path.join(trialDir, executableScript);
                              await fs.symlink(binSource, binDest);
-                             cmd = 'sh'; 
-                             args = ['-c', `ulimit -v ${memLimitKB} && ${binDest}`];
+                             const safeBinDest = isWin ? binDest : `./${path.basename(binDest)}`;
+                             cmd = isWin ? safeBinDest : 'sh'; 
+                             args = isWin ? [] : ['-c', `${prefix}${safeBinDest}`];
                         }
+                    } else if (isNode) {
+                        // Node Wrapper Symlink
+                        if (executableScript !== path.basename(evalScript)) {
+                         await fs.symlink(
+                            path.join(tempDir, executableScript), 
+                            path.join(trialDir, executableScript)
+                        );
+                        }
+                        const nodeCmd = isWin ? 'npx.cmd' : 'npx';
+                        cmd = isWin ? nodeCmd : 'sh'; 
+                        args = isWin ? ['tsx', executableScript] : ['-c', `${prefix}${nodeCmd} tsx ${executableScript}`];
                     } else {
                         // Python Wrapper Symlink
                         if (executableScript !== path.basename(evalScript)) {
@@ -415,8 +451,9 @@ except Exception as e:
                             path.join(trialDir, executableScript)
                         );
                         }
-                        cmd = 'sh'; 
-                        args = ['-c', `ulimit -v ${memLimitKB} && python3 ${executableScript}`];
+                        const pyCmd = isWin ? 'python' : 'python3';
+                        cmd = isWin ? pyCmd : 'sh'; 
+                        args = isWin ? [executableScript] : ['-c', `${prefix}${pyCmd} ${executableScript}`];
                     }
 
                     const currentEnv = {

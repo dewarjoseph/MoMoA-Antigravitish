@@ -132,4 +132,19 @@ registerTool(factFinderTool);
 registerTool(OptimizerTool);
 registerTool(CodeRunnerTool);
 registerTool(researchLogTool);
+
+// --- Dynamic Proxy MCP Implementations ---
+import { ProxyMcpTool } from './implementations/proxyMcpTool.js';
+
+if (process.env.ENABLE_STITCH_MCP === 'true') {
+    registerTool(new ProxyMcpTool('STITCH_MCP', 'npx', ['-y', '@modelcontextprotocol/server-stitch']));
+}
+
+if (process.env.ENABLE_BROWSER_MCP === 'true') {
+    registerTool(new ProxyMcpTool('BROWSER_MCP', 'npx', ['-y', '@modelcontextprotocol/server-puppeteer']));
+}
+
+if (process.env.ENABLE_SUPER_QUANT_SEQUENTIAL === 'true') {
+    registerTool(new ProxyMcpTool('SUPER_QUANT_SEQUENTIAL', 'npx', ['-y', '@modelcontextprotocol/server-sequential-thinking']));
+}
 // Future tools will be registered here.

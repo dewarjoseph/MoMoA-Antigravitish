@@ -100,10 +100,12 @@ export async function createMcpServer(projectDir: string): Promise<McpServer> {
 
   const context = await buildLocalContext(projectDir);
 
-  // Register each tool from the registry as an MCP tool
   const toolNames = getToolNames();
+  const legacyNlpTools = new Set(['PHONEAFRIEND', 'PARADOX', 'RESTART_PROJECT{', 'UPDATE_RESEARCH_LOG', 'FACTFINDER']);
 
   for (const toolName of toolNames) {
+    if (legacyNlpTools.has(toolName)) continue;
+    
     const tool = getTool(toolName);
     if (!tool) continue;
 
@@ -113,17 +115,61 @@ export async function createMcpServer(projectDir: string): Promise<McpServer> {
       .replace(/_+/g, '_')
       .replace(/_$/, '');
 
-    // Register with a generic params schema — tools parse their own params
+    let toolSchema: Record<string, z.ZodTypeAny> = {
+      params: z.string().describe('JSON-encoded parameters for the tool'),
+    };
+
+    if (mcpToolName === 'DOC_READ') {
+        toolSchema = { filename: z.string().describe("Target file path to read") };
+    } else if (mcpToolName === 'DOC_EDIT') {
+        toolSchema = { filename: z.string().describe("Target file path to edit"), editRequest: z.string().describe("Instructions or code block specifying the edit") };
+    } else if (mcpToolName === 'FILESEARCH_query') {
+        toolSchema = { query: z.string().describe("Search string, glob, or regex pattern to search across the codebase") };
+    } else if (mcpToolName === 'RUN') {
+        toolSchema = { 
+            files: z.array(z.string()).optional().describe("Files to stage or execute"),
+            command: z.string().optional().describe("Shell or build command (e.g., 'make firmware', 'gcc main.c -o main')"),
+        };
+    } else if (mcpToolName === 'LINT') {
+        toolSchema = { filename: z.string().describe("Target file path to lint") };
+    } else if (mcpToolName === 'DOC_REVERT') {
+        toolSchema = { filename: z.string().describe("Target file path to revert to original state") };
+    } else if (mcpToolName === 'URL_FETCH') {
+        toolSchema = { url: z.string().url().describe("Target URL to fetch") };
+    } else if (mcpToolName === 'REGEX_VALIDATE') {
+        toolSchema = { target_string: z.string(), regex: z.string() };
+    } else if (mcpToolName === 'MOVE_FILE_OR_FOLDER_SOURCE') {
+        toolSchema = { source: z.string(), destination: z.string() };
+    } else if (mcpToolName === 'OPTIMIZE') {
+        toolSchema = { 
+            evaluator_script: z.string().describe("Target driver script to execute evaluations"),
+            search_space: z.string().describe("JSON stringified grid space (e.g. {'chunk_size': [100, 200]})"),
+            goal: z.enum(['min', 'max']).optional().describe("Objective function direction"),
+            budget: z.number().optional().describe("Number of random search trials (0 = full grid search)"),
+            trials: z.number().optional().describe("Number of repititions per parameter set"),
+            dependencies: z.string().optional().describe("JSON stringified array of required pip modules or files")
+        };
+    } else if (mcpToolName === 'STITCH_MCP' || mcpToolName === 'BROWSER_MCP' || mcpToolName === 'SUPER_QUANT_SEQUENTIAL') {
+        toolSchema = {
+            tool_name: z.string().describe("The name of the external MCP tool to execute."),
+            args: z.record(z.string(), z.any()).optional().describe("Arguments bridging down to the downstream Google Labs / External MCP Server.")
+        };
+    }
+
     server.tool(
       mcpToolName,
-      `[${tool.displayName}] Execute the ${toolName} tool`,
-      {
-        params: z.string().describe('JSON-encoded parameters for the tool'),
-      },
+      `[${tool.displayName}] native overseer binding`,
+      toolSchema,
       async (args) => {
         try {
-          const params = JSON.parse(args.params);
-          const result: MultiAgentToolResult = await tool.execute(params, context);
+          // If we mapped specific properties, `args` carries them natively inside an object.
+          // Fallback legacy if params string is present, otherwise use native args object.
+          let executeParams: any = args;
+          if (args.params && typeof args.params === 'string') {
+              try { executeParams = JSON.parse(args.params); } catch { executeParams = args; }
+          }
+          
+          const result: MultiAgentToolResult = await tool.execute(executeParams, context);
           return {
             content: [{ type: 'text' as const, text: result.result }],
           };

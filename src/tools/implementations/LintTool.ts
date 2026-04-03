@@ -280,19 +280,17 @@ export const LintTool: MultiAgentTool = {
       switch (language) {
         case 'python':
           linterCommand = 'python3'; 
-          linterArgs = ['-m', 'flake8', fullFileName, '--config', 'linter-tool-definition-files/.flake8', '--show-source'];
+          linterArgs = ['-m', 'flake8', fullFileName, '--show-source'];
         break;        
         case 'javascript':
-          // 1. Point to Hub's Binary (Absolute Path)
-          linterCommand = path.resolve('node_modules', '.bin', 'eslint');
+          // 1. Point to Project's Binary (Absolute Path via Infrastructure Native Root)
+          const projRoot = process.env.MOMO_WORKING_DIR || process.cwd();
+          const eslintBinaries = process.platform === 'win32' ? 'eslint.cmd' : 'eslint';
+          linterCommand = path.resolve(projRoot, 'node_modules', '.bin', eslintBinaries);
           
-          // 2. Point to Hub's Config (Absolute Path)
-          const configPath = path.resolve('linter-tool-definition-files', 'eslint.config.js');
-          
-          // 3. Target the file by BASENAME (since we will be inside the temp dir)
+          // 2. Target the file by BASENAME (since we will be inside the temp dir)
           linterArgs = [
               path.basename(fullFileName), 
-              '--config', configPath, 
               '--no-color', 
               '--format', 'codeframe' 
           ];
@@ -305,8 +303,7 @@ export const LintTool: MultiAgentTool = {
           break;
         case 'java':
           linterCommand = 'java';
-          // Note: This assumes checkstyle-10.23.1-all.jar is a valid JAR file.
-          linterArgs = ['-jar', 'linter-tool-definition-files/checkstyle-10.23.1-all.jar', fullFileName, '-c', 'linter-tool-definition-files/google_checks.xml'];
+          linterArgs = ['-jar', path.resolve(process.env.MOMO_WORKING_DIR || process.cwd(), 'checkstyle-all.jar'), fullFileName];
           break;
         case 'cpp':
           linterCommand = 'clang-tidy';
@@ -326,10 +323,7 @@ export const LintTool: MultiAgentTool = {
           break;
         case 'kotlin':
           linterCommand = 'ktlint'; 
-          linterArgs = [
-              '--editorconfig=linter-tool-definition-files/.editorconfig',
-              fullFileName
-          ];
+          linterArgs = [fullFileName];
           break;
         case 'maven':
           linterCommand = 'mvn';
@@ -352,7 +346,7 @@ export const LintTool: MultiAgentTool = {
       if (language === 'javascript') {
           executionCwd = path.dirname(fullFileName);
 
-          const projectNodeModules = path.resolve(process.cwd(), 'node_modules');
+          const projectNodeModules = path.resolve(process.env.MOMO_WORKING_DIR || process.cwd(), 'node_modules');
           
           executionEnv = {
               ...process.env, // Inherit existing variables

@@ -33,42 +33,59 @@ export const fileSearchTool: MultiAgentTool = {
    * @returns A promise that resolves to the file's content or an error message.
    */
   async execute(params: Record<string, string>, context: MultiAgentToolContext): Promise<MultiAgentToolResult> {
-
     const query = params.query;
+    const projectRoot = process.env.MOMO_WORKING_DIR || process.cwd();
 
     context.sendMessage(JSON.stringify({
       status: "PROGRESS_UPDATES",
-      completed_status_message: `Searching for \`${query}\``,
+      completed_status_message: `Searching filesystem for \`${query}\``,
     }));
 
-    // 1. Search text file content.
-    const contentMatches = findInFiles(query, context.fileMap) || [];
+    const searchResults = new Set<string>();
     
-    // Use a Set to store unique results to avoid duplicates.
-    const searchResults = new Set<string>(contentMatches);
+    try {
+        const { exec } = await import('child_process');
+        const util = await import('util');
+        const execAsync = util.promisify(exec);
 
-    // 2. Search all filenames (both text and binary).
-    const allFilenames = [...context.fileMap.keys(), ...context.binaryFileMap.keys()];
-    for (const filename of allFilenames) {
-        if (filename.includes(query)) {
-            if (context.binaryFileMap.has(filename)) {
-                searchResults.add(`Binary file found: ${filename}`);
+        // Try `git grep` first as it strictly ignores .git and binaries efficiently.
+        // -i: ignore case, -I: ignore binary files, -n: line numbers
+        // We wrap query in quotes safely by escaping existing double quotes.
+        const safeQuery = query.replace(/"/g, '\\"');
+        
+        try {
+            const { stdout } = await execAsync(`git grep -i -I -n "${safeQuery}"`, { cwd: projectRoot, maxBuffer: 1024 * 1024 * 10 });
+            if (stdout) {
+                const lines = stdout.split('\n').filter(l => l.trim().length > 0);
+                lines.forEach(l => searchResults.add(l));
+            }
+        } catch (gitErr: any) {
+            // git grep exits with code 1 if no matches exist.
+            if (gitErr.code === 1 && !gitErr.stderr) {
+                 // Nothing found natively, silent ignore.
             } else {
-                // If found by content search, it's already in the set as just the filename.
-                // This logic ensures we don't add it twice.
-                searchResults.add(filename);
+                 // Fallback to basic fileMap check if git fails directly!
+                 const allFilenames = [...context.fileMap.keys(), ...context.binaryFileMap.keys()];
+                 for (const filename of allFilenames) {
+                     if (filename.toLowerCase().includes(query.toLowerCase())) {
+                          searchResults.add(`[Filename Match]: ${filename}`);
+                     }
+                 }
             }
         }
+    } catch (e: any) {
+        searchResults.add(`[Error during native search]: ${e.message}`);
     }
 
-    const finalResultArray = Array.from(searchResults);
+    const finalResultArray = Array.from(searchResults).slice(0, 500); // cap to 500 results to avoid massive context explosion
     const replacementString = `---FILE SEARCH RESULTS INTENTIONALLY REMOVED---`;
 
-    const result = finalResultArray.length > 0 ? finalResultArray.join('\n') : `No matches found for your query.`;
+    let result = finalResultArray.length > 0 ? finalResultArray.join('\n') : `No matches found for your query.`;
+    if (searchResults.size > 500) result += `\n... (Capped at 500 results)`;
 
     context.sendMessage(JSON.stringify({
       status: "PROGRESS_UPDATES",
-      completed_status_message: `\`\`\`\n${result.trim()}\n\`\`\``,
+      completed_status_message: `\`\`\`\n${result.substring(0, 300)}...\n\`\`\``,
     }));
 
     return {
