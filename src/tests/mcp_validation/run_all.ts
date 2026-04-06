@@ -29,12 +29,13 @@ const SUITES: TestSuite[] = [
 ];
 
 async function runSuite(suite: TestSuite): Promise<{ passed: boolean; output: string }> {
-  const suiteDir = path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1'));
+  const suiteDir = __dirname;
   const suitePath = path.join(suiteDir, suite.file);
 
   return new Promise((resolve) => {
     const child = spawn(tsxCmd, ['-y', 'tsx', suitePath], {
       stdio: ['pipe', 'pipe', 'pipe'],
+      shell: isWin,
       env: { ...process.env },
       cwd: path.resolve(suiteDir, '..', '..', '..'),
     });

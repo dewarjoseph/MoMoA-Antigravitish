@@ -339,7 +339,7 @@ async function runTests(): Promise<void> {
   console.log(`║  RESULTS: ${passedTests}/${totalTests} tests passed${' '.repeat(Math.max(0, 35 - `${passedTests}/${totalTests}`.length))}║`);
   console.log('╚══════════════════════════════════════════════════════════╝\n');
 
-  if (passedTests < totalTests) process.exit(1);
+  if (passedTests < totalTests) { process.exit(1); } else { process.exit(0); }
 }
 
 runTests().catch(err => {

@@ -360,7 +360,7 @@ async function runE2E(): Promise<void> {
   console.log(`║  E2E RESULTS: ${passedTests}/${totalTests} assertions passed${' '.repeat(Math.max(0, 30 - `${passedTests}/${totalTests}`.length))}║`);
   console.log('╚══════════════════════════════════════════════════════════╝\n');
 
-  if (passedTests < totalTests) process.exit(1);
+  if (passedTests < totalTests) { process.exit(1); } else { process.exit(0); }
 }
 
 runE2E().catch(err => {

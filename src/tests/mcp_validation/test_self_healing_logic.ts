@@ -206,7 +206,7 @@ Hello World`;
   const fileHypothesis = 'Fix: change in `script.py`:\n```python\nx = 42\nprint(x)\n```';
   const fileFixed = await (runner as any).applyFix(fileHypothesis, fileParams, mockCtx);
   assert(fileFixed === true, 'File edit strategy works');
-  assert(mockCtx.fileMap.get('script.py')?.includes('x = 42'), 'File content updated');
+  assert(mockCtx.fileMap.get('script.py')?.includes('x = 42') ?? false, 'File content updated');
 
   // Strategy 3: Dependency addition
   const depParams: Record<string, unknown> = { dependencies: '["numpy"]' };
@@ -285,7 +285,7 @@ Hello World`;
   console.log(`║  RESULTS: ${passedTests}/${totalTests} tests passed${' '.repeat(Math.max(0, 35 - `${passedTests}/${totalTests}`.length))}║`);
   console.log('╚══════════════════════════════════════════════════════════╝\n');
 
-  if (passedTests < totalTests) process.exit(1);
+  if (passedTests < totalTests) { process.exit(1); } else { process.exit(0); }
 }
 
 runTests().catch(err => {

@@ -55,6 +55,7 @@ export class McpClientManager {
   private debounceTimer: ReturnType<typeof setTimeout> | null = null;
   private onToolsChanged: (() => Promise<void>) | null = null;
   private _isInitialized = false;
+  private _isShuttingDown = false;
 
   constructor(configPath: string) {
     this.configPath = path.resolve(configPath);
@@ -135,6 +136,7 @@ export class McpClientManager {
    * Gracefully shut down all connections and stop the file watcher.
    */
   async shutdown(): Promise<void> {
+    this._isShuttingDown = true;
     this.stopWatcher();
     const disconnects = [...this.connections.keys()].map(name =>
       this.disconnectServer(name).catch(err =>
@@ -387,6 +389,7 @@ export class McpClientManager {
    * Reload config from disk and reconcile connections.
    */
   async reload(): Promise<void> {
+    if (this._isShuttingDown) return;
     const config = this.readConfigFile();
     if (!config) {
       process.stderr.write('[MCP-Manager] Config file not found during reload, disconnecting all.\n');

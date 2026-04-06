@@ -135,11 +135,12 @@ Strategy-specific instructions will be injected from the prompt directory if ava
       if (branch) {
         args.push('--branch', branch);
       }
-      args.push('--session', prompt);
+      // Read session from stdin to support "Mega-Contexts" (100k+ tokens)
+      // and bypass Windows E2BIG / command line length limits.
 
       const proc = spawn('jules', args, {
         shell: true,
-        stdio: ['ignore', 'pipe', 'pipe'],
+        stdio: ['pipe', 'pipe', 'pipe'],
       });
 
       let stdout = '';
@@ -159,6 +160,10 @@ Strategy-specific instructions will be injected from the prompt directory if ava
       proc.on('error', (err: Error) => {
         reject(new Error(`Failed to spawn jules: ${err.message}`));
       });
+
+      // Stream the massive prompt payload via stdin
+      proc.stdin.write(prompt);
+      proc.stdin.end();
 
       // Timeout after 30 seconds for dispatch
       setTimeout(() => {
