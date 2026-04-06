@@ -191,6 +191,22 @@ export async function createMcpServer(
             prompt_name: z.string().optional().describe("Name of the prompt to retrieve."),
             args: z.record(z.string(), z.string()).optional().describe("Arguments to pass to the prompt template."),
         };
+    } else if (mcpToolName === 'JULES_CREATE_SESSION') {
+        toolSchema = {
+            prompt: z.string().describe("The task description for Jules to execute."),
+            sourceId: z.string().describe("The source repository ID. Example: sources/123"),
+            branch: z.string().optional().describe("Optional starting branch. Defaults to main."),
+            title: z.string().optional().describe("Optional title for the session."),
+            requirePlanApproval: z.boolean().optional().describe("If true, plans require standard manual approval."),
+        };
+    } else if (mcpToolName === 'JULES_MONITOR_SESSION') {
+        toolSchema = {
+            sessionId: z.string().describe("The session ID. Example: sessions/123"),
+        };
+    } else if (mcpToolName === 'JULES_AUTO_TRIAGE') {
+        toolSchema = {
+            sessionId: z.string().describe("The session ID waiting for approval/triage."),
+        };
     } else if (tool instanceof DynamicMcpTool) {
         // Dynamic MCP tools: build schema from discovered inputSchema
         toolSchema = buildZodSchemaFromJson(tool.getInputSchema());

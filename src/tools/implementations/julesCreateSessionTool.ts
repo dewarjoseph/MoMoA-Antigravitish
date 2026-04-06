@@ -6,14 +6,16 @@ export const julesCreateSessionTool: MultiAgentTool = {
   displayName: "Jules Create Session Tool",
   name: "JULES_CREATE_SESSION",
 
-  async execute(params: Record<string, string>, context: MultiAgentToolContext): Promise<MultiAgentToolResult> {
+  async execute(params: Record<string, any>, context: MultiAgentToolContext): Promise<MultiAgentToolResult> {
     const client = new JulesClient();
     
-    let args;
-    try {
-      args = JSON.parse(params.jsonArgs);
-    } catch (e: any) {
-      return { result: `Failed to parse arguments for JULES_CREATE_SESSION. Expected JSON string but received: "${params.jsonArgs}". Error: ${e.message}` };
+    let args = params;
+    if (typeof params.jsonArgs === 'string') {
+      try {
+        args = JSON.parse(params.jsonArgs);
+      } catch (e: any) {
+        return { result: `Failed to parse arguments for JULES_CREATE_SESSION. Expected JSON string but received: "${params.jsonArgs}". Error: ${e.message}` };
+      }
     }
 
     const sourceContext = {

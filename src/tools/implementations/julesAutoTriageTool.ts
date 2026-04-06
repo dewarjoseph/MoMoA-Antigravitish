@@ -7,14 +7,16 @@ export const julesAutoTriageTool: MultiAgentTool = {
   displayName: "Jules Autonomous Swarm Auto-Triage Tool",
   name: "JULES_AUTO_TRIAGE",
 
-  async execute(params: Record<string, string>, context: MultiAgentToolContext): Promise<MultiAgentToolResult> {
+  async execute(params: Record<string, any>, context: MultiAgentToolContext): Promise<MultiAgentToolResult> {
     const client = new JulesClient();
     
-    let args;
-    try {
-      args = JSON.parse(params.jsonArgs);
-    } catch (e: any) {
-      return { result: `Failed to parse arguments for JULES_AUTO_TRIAGE. Expected JSON string but received: "${params.jsonArgs}". Error: ${e.message}` };
+    let args = params;
+    if (typeof params.jsonArgs === 'string') {
+      try {
+        args = JSON.parse(params.jsonArgs);
+      } catch (e: any) {
+        return { result: `Failed to parse arguments for JULES_AUTO_TRIAGE. Expected JSON string but received: "${params.jsonArgs}". Error: ${e.message}` };
+      }
     }
 
     const sessionIdRaw = args.sessionId;
