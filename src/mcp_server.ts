@@ -321,11 +321,25 @@ export async function createMcpServer(
       toolSchema,
       async (args) => {
         try {
+          require('fs').appendFileSync('mcp_debug.log', `[MoMo-MCP] EXECUTING TOOL ${mcpToolName} with ARGS: ${JSON.stringify(args)}\n`);
+          process.stderr.write(`[MoMo-MCP] EXECUTING TOOL ${mcpToolName} with ARGS: ${JSON.stringify(args)}\n`);
           // If we mapped specific properties, `args` carries them natively inside an object.
           // Fallback legacy if params string is present, otherwise use native args object.
           let executeParams: any = args;
           if (args.params && typeof args.params === 'string') {
               try { executeParams = JSON.parse(args.params); } catch { executeParams = args; }
+          }
+          
+          if (mcpToolName === 'REGEX_VALIDATE' && args.regex && args.target_string) {
+              executeParams = {
+                  regExString: `{SoRegEx}${args.regex}{EoRegEx}`,
+                  flags: '',
+                  testCases: [{
+                      input: args.target_string,
+                      expected: true,
+                      type: 'validate'
+                  }]
+              };
           }
           
           const result: MultiAgentToolResult = await tool.execute(executeParams, context);

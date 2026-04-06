@@ -241,6 +241,10 @@ export const regexValidatorTool: MultiAgentTool = {
    * @returns A promise resolving to a MultiAgentToolResult.
    */
   async execute(params: Record<string, any>, context: MultiAgentToolContext): Promise<MultiAgentToolResult> {
+    if (params.regex != null && params.target_string != null) {
+      params.regExString = `{SoRegEx}${params.regex}{EoRegEx}`;
+      params.testCases = [{ input: params.target_string, expected: true, type: 'validate' }];
+    }
     const { regExString, flags, testCases } = params;
 
     const validationResult = regexValidator(regExString, flags, testCases);

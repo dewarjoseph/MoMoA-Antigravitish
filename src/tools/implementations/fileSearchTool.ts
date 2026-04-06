@@ -65,10 +65,21 @@ export const fileSearchTool: MultiAgentTool = {
                  // Nothing found natively, silent ignore.
             } else {
                  // Fallback to basic fileMap check if git fails directly!
-                 const allFilenames = [...context.fileMap.keys(), ...context.binaryFileMap.keys()];
+                 // Fallback to basic fileMap check if git fails directly!
+                 const allFilenames = [...context.fileMap.keys()];
                  for (const filename of allFilenames) {
                      if (filename.toLowerCase().includes(query.toLowerCase())) {
                           searchResults.add(`[Filename Match]: ${filename}`);
+                     }
+                     const content = context.fileMap.get(filename);
+                     if (content) {
+                          const lowerQuery = query.toLowerCase();
+                          const lines = content.split('\n');
+                          for (let i = 0; i < lines.length; i++) {
+                              if (lines[i].toLowerCase().includes(lowerQuery)) {
+                                  searchResults.add(`${filename}:${i+1}:${lines[i].trim()}`);
+                              }
+                          }
                      }
                  }
             }

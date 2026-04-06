@@ -52,8 +52,18 @@ export const fileReaderTool: MultiAgentTool = {
     ]);
 
     // const filename = await fileNameLookup(providedFilename, allFilesMap, context.multiAgentGeminiClient);
+    const path = await import('path');
     let filename = providedFilename.trim();
+    const workDir = process.env.MOMO_WORKING_DIR || process.cwd();
     
+    // Normalize and convert absolute path to relative path
+    if (path.isAbsolute(filename)) {
+        filename = path.relative(workDir, filename);
+    }
+    
+    // Convert backslashes to forward slashes for cross-platform lookup
+    filename = filename.replace(/\\/g, '/');
+
     if (!allFilesMap.has(filename)) {
         // File not found. NOW, let's try to find a suggestion.
         const suggestion = await fileNameLookup(filename, allFilesMap, context.multiAgentGeminiClient);

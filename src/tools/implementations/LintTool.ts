@@ -129,7 +129,7 @@ function processExecution(command: string, args: string[], filename: string, ful
         console.error("Execute: " + command + " " + args.join(' '));
 
         const cmdLineProcess = spawn(command, args, { 
-          shell: false, 
+          shell: true, 
           cwd: cwd, 
           env: env || process.env
         });
