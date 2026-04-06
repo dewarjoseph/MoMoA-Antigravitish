@@ -6,18 +6,22 @@
  * `jules remote new` as child processes.
  */
 
-import { spawn } from 'node:child_process';
+
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { SwarmDispatchOptions, DEFAULT_STRATEGIES } from './types.js';
 import { LocalStore, SessionState } from '../persistence/local_store.js';
 import * as crypto from 'node:crypto';
+import type { MultiAgentToolContext } from '../momoa_core/types.js';
+import { executeTool } from '../tools/multiAgentToolRegistry.js';
 
 export class SwarmManager {
   private store: LocalStore;
+  private context: MultiAgentToolContext;
 
-  constructor(store: LocalStore) {
+  constructor(store: LocalStore, context: MultiAgentToolContext) {
     this.store = store;
+    this.context = context;
   }
 
   /**
@@ -166,50 +170,21 @@ Strategy-specific instructions will be injected from the prompt directory if ava
   }
 
   /**
-   * Spawn a single jules worker as a child process using `jules remote new`.
+   * Spawn a single jules worker using JULES_CREATE_SESSION native tool execution.
    */
-  private spawnJulesWorker(prompt: string, repo: string, branch?: string): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const args = ['remote', 'new', '--repo', repo];
-      if (branch) {
-        args.push('--branch', branch);
-      }
-      // Read session from stdin to support "Mega-Contexts" (100k+ tokens)
-      // and bypass Windows E2BIG / command line length limits.
+  private async spawnJulesWorker(prompt: string, repo: string, branch?: string): Promise<string> {
+    try {
+      const response = await executeTool('JULES_CREATE_SESSION', {
+        prompt,
+        sourceId: repo,
+        branch: branch || "main",
+        requirePlanApproval: false,
+      }, this.context);
 
-      const proc = spawn('jules', args, {
-        shell: true,
-        stdio: ['pipe', 'pipe', 'pipe'],
-      });
-
-      let stdout = '';
-      let stderr = '';
-
-      proc.stdout.on('data', (data: Buffer) => { stdout += data.toString(); });
-      proc.stderr.on('data', (data: Buffer) => { stderr += data.toString(); });
-
-      proc.on('close', (code: number | null) => {
-        if (code === 0 || code === null) {
-          resolve(stdout.trim());
-        } else {
-          reject(new Error(`jules remote new exited with code ${code}: ${stderr}`));
-        }
-      });
-
-      proc.on('error', (err: Error) => {
-        reject(new Error(`Failed to spawn jules: ${err.message}`));
-      });
-
-      // Stream the massive prompt payload via stdin
-      proc.stdin.write(prompt);
-      proc.stdin.end();
-
-      // Timeout after 30 seconds for dispatch
-      setTimeout(() => {
-        proc.kill();
-        reject(new Error('jules remote new timed out after 30s'));
-      }, 30_000);
-    });
+      return response.result;
+    } catch (err: any) {
+      throw new Error(`Failed to create Jules session via MCP tool: ${err.message}`);
+    }
   }
 
   /**

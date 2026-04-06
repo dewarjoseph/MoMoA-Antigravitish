@@ -93,10 +93,15 @@ function createMockContext(): MultiAgentToolContext {
     originalFileMap: new Map<string, string>(),
     originalBinaryFileMap: new Map<string, string>(),
     sendMessage: () => {},
-    multiAgentGeminiClient: {} as any,
+    multiAgentGeminiClient: {
+        sendOneShotMessage: async () => ({ text: 'Mocked response' }),
+        sendTranscriptMessage: async () => ({ text: '@RETURN Edit completed' })
+    } as any,
     experts: [],
     transcriptsToUpdate: [],
-    transcriptForContext: {} as any,
+    transcriptForContext: {
+        getTranscriptAsString: () => 'Mock Transcript',
+    } as any,
     overseer: undefined,
     saveFileResolver: null,
     infrastructureContext: {
@@ -203,7 +208,7 @@ Hello World`;
 
   // Strategy 2: File edit
   const fileParams: Record<string, unknown> = { files: ['script.py'] };
-  const fileHypothesis = 'Fix: change in `script.py`:\n```python\nx = 42\nprint(x)\n```';
+  const fileHypothesis = 'Fix this file using @DOC/EDIT{script.py}\nTO_REPLACE:{print(undefined_var)}\nNEW_TEXT:{x = 42\nprint(x)}\nEND_EDIT';
   const fileFixed = await (runner as any).applyFix(fileHypothesis, fileParams, mockCtx);
   assert(fileFixed === true, 'File edit strategy works');
   assert(mockCtx.fileMap.get('script.py')?.includes('x = 42') ?? false, 'File content updated');

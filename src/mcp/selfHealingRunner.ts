@@ -127,12 +127,33 @@ export class SelfHealingRunner {
       log(`Attempt ${attempt}/${this.config.maxRetries}: Detected recoverable error. Engaging sequential-thinking...`);
 
       // Build the reasoning prompt
-      const reasoningPrompt = this.buildReasoningPrompt(
+      let reasoningPrompt = this.buildReasoningPrompt(
         toolName,
         params,
         errorSummary,
         attempt
       );
+
+      // Paradox Resolution Logic:
+      // If we've failed twice with the same exact error and hypothesis cycle, break the loop
+      if (attempt >= 3 && this.healingLog.length >= 2) {
+        const prev1 = this.healingLog[this.healingLog.length - 1];
+        const prev2 = this.healingLog[this.healingLog.length - 2];
+        if (prev1.error === errorSummary || prev1.hypothesis === prev2.hypothesis) {
+          log(`Paradoxical loop detected. Engaging PARADOX tool for resolution synthesis...`);
+          try {
+            const paradoxResponse = await executeTool('PARADOX', {
+               paradox: `The tool ${toolName} continuously fails with: ${errorSummary}. I tried: ${prev1.hypothesis}. But the error persists. Provide a synthesized workaround or new approach.`
+            }, context);
+            log(`PARADOX resolution: ${paradoxResponse.result.substring(0, 200)}...`);
+            
+            // Allow the prompt to incorporate the paradox workaround
+            reasoningPrompt += `\n\n## PARADOX RESOLUTION GUIDANCE:\n${paradoxResponse.result}`;
+          } catch (pErr: any) {
+            log(`Paradox resolution failed: ${pErr.message}`);
+          }
+        }
+      }
 
       let hypothesis = '';
       try {
@@ -240,9 +261,9 @@ ${errorSummary}
 3. Suggest a CONCRETE fix — either a code change or a command modification
 4. Express your fix as a clear, actionable instruction
 
-Be specific. If it's a code fix, show the exact lines to change.
-If it's a command issue, show the corrected command.
-If it's a missing dependency, say which one.
+Be specific. If it's a code fix, output exactly a \`@DOC/EDIT{filename}\` block with \`TO_REPLACE:{}\` and \`NEW_TEXT:{}\`.
+If it's a command issue, output the corrected command enclosed in \`\`\`bash\`\`\`.
+If it's a missing dependency, instruct using \`install <dependency>\`.
 
 Respond with ONLY the fix instruction, no preamble.`;
   }
@@ -334,25 +355,20 @@ Respond with ONLY the fix instruction, no preamble.`;
       }
     }
 
-    // Strategy 2: If the hypothesis mentions a file edit,
-    // try to apply it through the file map in context
-    const fileEditMatch = hypothesis.match(/(?:change|replace|modify|fix)\s+(?:in\s+)?[`"']?([^\s`"']+\.\w+)[`"']?/i);
-    if (fileEditMatch) {
-      const targetFile = fileEditMatch[1];
-      if (context.fileMap.has(targetFile)) {
-        // Extract code block from hypothesis
-        const codeMatch = hypothesis.match(/```[\w]*\n([\s\S]*?)```/);
-        if (codeMatch) {
-          const patchContent = codeMatch[1].trim();
-          // Simple: apply the entire code block as the new file content
-          // (A more sophisticated implementation would use diff/patch)
-          if (patchContent.length > 10) {
-            context.fileMap.set(targetFile, patchContent);
-            context.editedFilesSet.add(targetFile);
-            process.stderr.write(`[SelfHeal] Applied file fix to: ${targetFile}\n`);
-            return true;
-          }
-        }
+    // Strategy 2: Check for a DOC_EDIT block
+    if (hypothesis.includes('@DOC/EDIT{')) {
+      const docEditMatch = hypothesis.match(/@DOC\/EDIT{([A-Za-z0-9_.-]+)}/i);
+      if (docEditMatch) {
+         const targetFile = docEditMatch[1];
+         const fullBlock = hypothesis.substring(hypothesis.indexOf('@DOC/EDIT{'));
+         const editRequestBlock = fullBlock.split(/\r?\n/).slice(1).join('\n').trim();
+         try {
+           const result = await executeTool('DOC/EDIT{', { filename: targetFile, editRequest: editRequestBlock }, context);
+           process.stderr.write(`[SelfHeal] Executed DOC_EDIT on ${targetFile}: ${result.result.substring(0, 100)}...\n`);
+           return true; // We always return true here to allow a re-run of the original tool, even if DOC_EDIT partially failed, the re-run will confirm.
+         } catch (e: any) {
+           process.stderr.write(`[SelfHeal] DOC_EDIT execution failed internally: ${e}\n`);
+         }
       }
     }
 

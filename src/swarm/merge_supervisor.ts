@@ -7,7 +7,8 @@ import { GeminiClient } from "../services/geminiClient.js";
 import { DEFAULT_GEMINI_PRO_MODEL } from "../config/models.js";
 import { getExpertPrompt } from "../services/promptManager.js";
 import { removeBacktickFences } from "../utils/markdownUtils.js";
-import { spawn } from "node:child_process";
+import type { MultiAgentToolContext } from "../momoa_core/types.js";
+import { executeTool } from "../tools/multiAgentToolRegistry.js";
 import * as path from "node:path";
 import * as fs from "node:fs";
 
@@ -17,7 +18,7 @@ export interface SupervisionResult {
 }
 
 export class MergeSupervisor {
-  constructor(private geminiClient: GeminiClient) {}
+  constructor(private geminiClient: GeminiClient, private context: MultiAgentToolContext) {}
 
   public async evaluateAndMerge(
     branchName: string,
@@ -29,13 +30,13 @@ export class MergeSupervisor {
       // Determine default branch (main or master)
       let baseBranch = "main";
       try {
-        await this.runGitCommand(["rev-parse", "--verify", "main"], repoRoot);
+        await this.runMcpCommand(`git rev-parse --verify main`, repoRoot);
       } catch {
         baseBranch = "master";
       }
 
       // 1. Get the diff of the new branch against the base branch
-      const diffStr = await this.runGitCommand(["diff", `${baseBranch}...${branchName}`], repoRoot);
+      const diffStr = await this.runMcpCommand(`git diff ${baseBranch}...${branchName}`, repoRoot);
       
       if (!diffStr || diffStr.trim() === "") {
          return { approved: false, reasoning: "Diff was empty or could not be generated." };
@@ -90,8 +91,8 @@ Provide your response strictly in JSON format matching this schema:
       if (decision.approved) {
         console.log(`[MergeSupervisor] AI approved diff for ${branchName}. Initiating merge...`);
         // We ensure we are on main
-        await this.runGitCommand(["checkout", baseBranch], repoRoot);
-        const mergeResult = await this.runGitCommand(["merge", branchName, "--no-edit"], repoRoot);
+        await this.runMcpCommand(`git checkout ${baseBranch}`, repoRoot);
+        const mergeResult = await this.runMcpCommand(`git merge ${branchName} --no-edit`, repoRoot);
         console.log(`[MergeSupervisor] Merge output: ${mergeResult}`);
       } else {
         console.log(`[MergeSupervisor] AI rejected diff for ${branchName}. Reasoning: ${decision.reasoning}`);
@@ -105,25 +106,30 @@ Provide your response strictly in JSON format matching this schema:
     }
   }
 
-  private runGitCommand(args: string[], cwd: string): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const proc = spawn("git", args, {
-        cwd,
-        shell: process.platform === 'win32',
-      });
-
-      let stdout = "";
-      let stderr = "";
-
-      proc.stdout.on("data", (data) => { stdout += data.toString(); });
-      proc.stderr.on("data", (data) => { stderr += data.toString(); });
-
-      proc.on("close", (code) => {
-        if (code === 0) resolve(stdout);
-        else reject(new Error(`git ${args.join(" ")} failed w/ code ${code}: ${stderr}`));
-      });
+  private async runMcpCommand(command: string, cwd: string): Promise<string> {
+    const originalDir = process.cwd();
+    process.chdir(cwd);
+    try {
+      const response = await executeTool('RUN', { command }, this.context);
       
-      proc.on("error", (err) => reject(new Error(`git spawn error: ${err.message}`)));
-    });
+      if (response.result.includes("Error:") || response.result.includes("failed")) {
+          // Some git commands write to stderr normally, so we need to be careful with blindly throwing. 
+          // But our RUN tool prefixes with `--- STDERR ---`
+          if (response.result.includes("Process exited with code") && !response.result.includes("code 0")) {
+              throw new Error(response.result);
+          }
+      }
+      
+      // Clean up the formatting provided by RUN tool
+      let output = response.result.replace(/--- STDOUT ---\n|^.*Executing target.*$/gm, '').trim();
+      const errMatch = response.result.match(/--- STDERR ---\n([\s\S]*?)(?=\n--- STDOUT|$)/);
+      if (errMatch && errMatch[1].trim()) {
+        output += '\n' + errMatch[1].trim();
+      }
+
+      return output;
+    } finally {
+      process.chdir(originalDir);
+    }
   }
 }

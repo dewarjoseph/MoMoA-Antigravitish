@@ -24,7 +24,8 @@ const SUITES: TestSuite[] = [
   { name: 'Test B: Self-Healing Retry Logic', file: 'test_self_healing_logic.ts' },
   { name: 'Test C: MCP Resources & Prompts', file: 'test_mcp_resources.ts' },
   { name: 'Test D: Bi-Directional MCP Host', file: 'test_agent_as_mcp.ts' },
-  { name: 'Test A: Dynamic MCP Hot-Plug', file: 'test_mcp_hotplug.ts' },
+  { name: 'Test E: Dynamic MCP Hot-Plug', file: 'test_mcp_hotplug.ts' },
+  { name: 'Test F: Architecture Local Assumption Check', file: 'test_no_local_assumptions.ts' },
   { name: 'E2E Crucible: Self-Healing Integration', file: 'test_e2e_crucible.ts' },
 ];
 
