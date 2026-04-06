@@ -1,0 +1,23 @@
+﻿Assign a new session to Jules in a remote VM
+
+Usage:
+  jules remote new [flags]
+
+Examples:
+# Create a session using the current working directory's repository
+jules remote new --session "add the solarized dark theme"
+
+# Create a session for a specific repository
+jules remote new --repo jiahao42/jules-cli --session "add the solarized dark theme"
+
+# Create 3 parallel sessions for the same task
+jules remote new --repo jiahao42/jules-cli --session "add the solarized dark theme" --parallel 3
+
+Flags:
+  -h, --help             help for new
+      --parallel int     Number of parallel sessions to create for the same task (1-5) (default 1)
+      --repo string      Which repo you want Jules to work on (defaults to current working directory), example format: jiahao42/jules-cli
+      --session string   Create a Jules session based on your task, you may use pipe like 'cat task.md | jules remote new --repo jiahao42/jules-cli'
+
+Global Flags:
+      --theme string   Which theme to use, dark/light (default "dark")

@@ -1,0 +1,120 @@
+﻿
+ΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûê
+Γûê                                                          Γûê
+Γûê   MoMo MCP Validation Suite ΓÇö Phase 3 Proof of Work     Γûê
+Γûê                                                          Γûê
+ΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûê
+
+
+ΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûô
+Γûô  Running: Test B: Self-Healing Retry Logic
+ΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûô
+
+node.exe : 
+Fatal runner 
+error: Error: 
+spawn EINVAL
+At line:1 
+char:1
++ & 
+"C:\Program Fi
+les\nodejs/nod
+e.exe" 
+"C:\Program Fi
+les\nodejs/nod
+e_mo ...
++ ~~~~~~~~~~~~
+~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~
+~
+    + Categor 
+   yInfo      
+        : N   
+ otSpecifi    
+ed: (Fata    
+l runner     
+error: Er    
+ror: spaw    
+n EINVAL:    
+String) [    
+], Remote    
+Exception
+    + FullyQu 
+   alifiedEr  
+  rorId : N   
+ ativeComm    
+andError
+ 
+    at ChildPr
+ocess.spawn (n
+ode:internal/c
+hild_process:4
+21:11)
+    at spawn (
+node:child_pro
+cess:796:9)
+    at 
+<anonymous> (C
+:\Users\Joe\so
+urce\MoMoA-Ant
+igravitish\src
+\tests\mcp_val
+idation\run_al
+l.ts:36:19)
+    at new 
+Promise 
+(<anonymous>)
+    at 
+runSuite (C:\U
+sers\Joe\sourc
+e\MoMoA-Antigr
+avitish\src\te
+sts\mcp_valida
+tion\run_all.t
+s:35:10)
+    at main (C
+:\Users\Joe\so
+urce\MoMoA-Ant
+igravitish\src
+\tests\mcp_val
+idation\run_al
+l.ts:88:26)
+    at 
+<anonymous> (C
+:\Users\Joe\so
+urce\MoMoA-Ant
+igravitish\src
+\tests\mcp_val
+idation\run_al
+l.ts:114:1)
+    at Object.
+<anonymous> (C
+:\Users\Joe\so
+urce\MoMoA-Ant
+igravitish\src
+\tests\mcp_val
+idation\run_al
+l.ts:117:2)
+    at Module.
+_compile (node
+:internal/modu
+les/cjs/loader
+:1804:14)
+    at Object.
+transformer (C
+:\Users\Joe\so
+urce\MoMoA-Ant
+igravitish\nod
+e_modules\tsx\
+dist\register-
+D46fvsV_.cjs:3
+:1104) {
+  errno: 
+-4071,
+  code: 
+'EINVAL',
+  syscall: 
+'spawn'
+}

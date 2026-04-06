@@ -33,6 +33,12 @@ import { OptimizerTool } from './implementations/optimizerTool.js';
 import { CodeRunnerTool } from './implementations/codeRunnerTool.js';
 import { researchLogTool } from './implementations/researchLogTool.js';
 import { swarmDispatchTool } from './implementations/swarmDispatchTool.js';
+import { superviseMergeTool } from './implementations/superviseMergeTool.js';
+import { swarmStatusTool } from './implementations/swarmStatusTool.js';
+import { swarmCleanupTool } from './implementations/swarmCleanupTool.js';
+import { julesCreateSessionTool } from './implementations/julesCreateSessionTool.js';
+import { julesMonitorSessionTool } from './implementations/julesMonitorSessionTool.js';
+import { julesAutoTriageTool } from './implementations/julesAutoTriageTool.js';
 
 // The state is a module-level constant, making it private to this module.
 const tools = new Map<string, MultiAgentTool>();
@@ -134,6 +140,12 @@ registerTool(OptimizerTool);
 registerTool(CodeRunnerTool);
 registerTool(researchLogTool);
 registerTool(swarmDispatchTool);
+registerTool(superviseMergeTool);
+registerTool(swarmStatusTool);
+registerTool(swarmCleanupTool);
+registerTool(julesCreateSessionTool);
+registerTool(julesMonitorSessionTool);
+registerTool(julesAutoTriageTool);
 
 // --- MCP Resource & Prompt Tools ---
 import { readMcpResourceTool } from './implementations/readMcpResourceTool.js';

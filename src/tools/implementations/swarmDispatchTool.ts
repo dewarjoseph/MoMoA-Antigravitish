@@ -77,9 +77,9 @@ export const swarmDispatchTool: MultiAgentTool = {
       count,
       targetDir,
       repo,
-      branch: dispatchArgs.branch,
-      promptDir,
-      strategies: dispatchArgs.strategies,
+      branch: dispatchArgs.branch ?? 'main',
+      ...(promptDir && { promptDir: promptDir }),
+      ...(dispatchArgs.strategies && { strategies: dispatchArgs.strategies }),
     }).then(dispatched => {
        store.appendLog('swarm_dispatch.log', `Background dispatch resolved. Dispatched ${dispatched.length} workers.`);
     }).catch(err => {

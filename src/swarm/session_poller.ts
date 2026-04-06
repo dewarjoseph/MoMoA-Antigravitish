@@ -11,6 +11,8 @@ import { spawn } from 'node:child_process';
 import { SessionStatus, PollResult, DEFAULT_STRATEGIES } from './types.js';
 import { generateStatusReport } from './report_writer.js';
 import { LocalStore } from '../persistence/local_store.js';
+import { GeminiClient } from '../services/geminiClient.js';
+import { MergeSupervisor } from './merge_supervisor.js';
 
 const API_BASE = 'https://jules.googleapis.com/v1alpha';
 
@@ -21,6 +23,8 @@ export class SessionPoller {
   private pollIntervalMs: number;
   private maxPolls: number;
   private store: LocalStore;
+  private geminiClient?: GeminiClient;
+  private mergeSupervisor?: MergeSupervisor;
   private pulledSessions: Set<string> = new Set();
   private approvedSessions: Set<string> = new Set();
   private isRunning: boolean = false;
@@ -32,6 +36,7 @@ export class SessionPoller {
     pollIntervalMs?: number;
     maxPolls?: number;
     store: LocalStore;
+    geminiClient?: GeminiClient;
   }) {
     this.sessionIds = opts.sessionIds;
     this.strategies = opts.strategies ?? DEFAULT_STRATEGIES;
@@ -39,6 +44,10 @@ export class SessionPoller {
     this.pollIntervalMs = opts.pollIntervalMs ?? 120_000; // 2 minutes
     this.maxPolls = opts.maxPolls ?? 120; // ~4 hours
     this.store = opts.store;
+    this.geminiClient = opts.geminiClient;
+    if (this.geminiClient) {
+      this.mergeSupervisor = new MergeSupervisor(this.geminiClient);
+    }
   }
 
   private log(msg: string): void {
@@ -185,6 +194,16 @@ export class SessionPoller {
           this.log(`[PULL-WARN] ${s.id}: ${output.substring(0, 100)}`);
         } else {
           this.log(`[PULL-OK] ${s.strategy} agent#${s.agentNumber} pulled successfully`);
+          
+          if (this.mergeSupervisor) {
+             this.log(`[MERGE-EVAL] Triggering Gemini merge supervision for ${branchName}...`);
+             const evalResult = await this.mergeSupervisor.evaluateAndMerge(branchName, s.id, repoRoot, s.title ?? s.id);
+             if (evalResult.approved) {
+                 this.log(`[MERGE-OK] Auto-merged ${branchName}`);
+             } else {
+                 this.log(`[MERGE-REJECTED] Agent work was not approved: ${evalResult.reasoning}`);
+             }
+          }
         }
 
         this.pulledSessions.add(s.id);

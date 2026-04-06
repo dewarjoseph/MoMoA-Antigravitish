@@ -1,0 +1,728 @@
+﻿
+ΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûê
+Γûê                                                          Γûê
+Γûê   MoMo MCP Validation Suite ΓÇö Phase 3 Proof of Work     Γûê
+Γûê                                                          Γûê
+ΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûê
+
+
+ΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûô
+Γûô  Running: Test B: Self-Healing Retry Logic
+ΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûô
+
+node.exe : 
+(node:30316) 
+[DEP0190] Depr
+ecationWarning
+: Passing 
+args to a 
+child process 
+with shell 
+option true 
+can lead to 
+security vulne
+rabilities, 
+as the 
+arguments are 
+not escaped, 
+only 
+concatenated.
+At line:1 
+char:1
++ & 
+"C:\Program Fi
+les\nodejs/nod
+e.exe" 
+"C:\Program Fi
+les\nodejs/nod
+e_mo ...
++ ~~~~~~~~~~~~
+~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~
+~
+    + Categor 
+   yInfo      
+        : N   
+ otSpecifi    
+ed: ((nod    
+e:30316)     
+[D...y co    
+ncatenate    
+d.:String    
+) [], Rem    
+oteExcept    
+ion
+    + FullyQu 
+   alifiedEr  
+  rorId : N   
+ ativeComm    
+andError
+ 
+(Use `node --t
+race-deprecati
+on ...` to 
+show where 
+the warning 
+was created)
+
+ΓòöΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòù
+Γòæ  TEST B: Self-Healing Orchestrator Retry Logic           Γòæ
+ΓòÜΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓò¥
+
+ΓöÇΓöÇ Phase 1: Error Pattern Detection ΓöÇΓöÇ
+  Γ£à PASS ΓÇö Detects non-zero exit code
+  Γ£à PASS ΓÇö Detects exit code 127
+  Γ£à PASS ΓÇö Ignores exit code 0
+  Γ£à PASS ΓÇö Detects timeout
+  Γ£à PASS ΓÇö Detects compilation failure
+  Γ£à PASS ΓÇö Detects Rust compilation failure
+  Γ£à PASS ΓÇö Detects system errors
+  Γ£à PASS ΓÇö Detects tool execution errors
+  Γ£à PASS ΓÇö Does not flag successful output
+  Γ£à PASS ΓÇö Does not flag clean output
+
+ΓöÇΓöÇ Phase 2: Error Summary Extraction ΓöÇΓöÇ
+  [INFO] Extracted summary: "Traceback (most recent call last):
+  File "test.py", line 3
+    print(undefined_var)
+NameError: name..."
+  Γ£à PASS ΓÇö Extracts NameError from stderr section
+  Γ£à PASS ΓÇö Preserves variable name in summary
+  Γ£à PASS ΓÇö Extracts error line from simple output
+
+ΓöÇΓöÇ Phase 3: Reasoning Prompt Construction ΓöÇΓöÇ
+  [INFO] Generated prompt (first 200 chars): "You are debugging a failed script execution. This is self-healing attempt 2.
+
+## Tool: RUN{
+## Command/Files: script.py
+
+## Error Output:
+```
+NameError: undefined_var
+```
+
+## Task:
+1. Analyze the erro..."
+  Γ£à PASS ΓÇö Includes attempt number
+  Γ£à PASS ΓÇö Includes tool name
+  Γ£à PASS ΓÇö Includes error text
+  Γ£à PASS ΓÇö Includes file names
+
+ΓöÇΓöÇ Phase 4: Fix Application Strategies ΓöÇΓöÇ
+[SelfHeal] 
+Updated 
+command to: 
+python 
+new_script.py
+  Γ£à PASS ΓÇö Command replacement strategy works
+  Γ£à PASS ΓÇö Command updated to: python new_script.py
+[SelfHeal] 
+Applied file 
+fix to: 
+script.py
+  Γ£à PASS ΓÇö File edit strategy works
+  Γ£à PASS ΓÇö File content updated
+[SelfHeal] 
+Added 
+dependency: 
+pandas
+  Γ£à PASS ΓÇö Dependency addition strategy works
+  Γ£à PASS ΓÇö Dependency added
+
+ΓöÇΓöÇ Phase 5: Full Retry Loop (Mocked) ΓöÇΓöÇ
+  Γ£à PASS ΓÇö Found sequential-thinking server: sequential-thinking
+  [INFO] Sequential-thinking response: "Fix: The variable is undefined. Replace `undefined_var` with `x = 42`.
+```python
+x = 42
+print(x)
+```..."
+  Γ£à PASS ΓÇö callSequentialThinking returned a response
+  Γ£à PASS ΓÇö Response contains relevant fix content
+
+ΓöÇΓöÇ Phase 6: MAX_RETRIES Ceiling ΓöÇΓöÇ
+  Γ£à PASS ΓÇö MAX_RETRIES set to 2 (got: 2)
+
+ΓöÇΓöÇ Phase 7: Healable Tool Registration ΓöÇΓöÇ
+  Γ£à PASS ΓÇö Runner detects recoverable errors for the retry loop
+  Γ£à PASS ΓÇö Runner can be disabled via config
+
+ΓòöΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòù
+Γòæ  RESULTS: 29/29 tests passed                              Γòæ
+ΓòÜΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓò¥
+
+
+  Γ₧ñ Γ£à Test B: Self-Healing Retry Logic: PASSED
+
+ΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûô
+Γûô  Running: Test C: MCP Resources & Prompts
+ΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûô
+
+
+ΓòöΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòù
+Γòæ  TEST C: Protocol Parity ΓÇö Resources & Prompts          Γòæ
+ΓòÜΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓò¥
+
+ΓöÇΓöÇ Phase 1: Error Handling (No Manager) ΓöÇΓöÇ
+  Γ£à PASS ΓÇö ReadMcpResource fails gracefully without manager
+  Γ£à PASS ΓÇö GetMcpPrompt fails gracefully without manager
+
+ΓöÇΓöÇ Phase 2: List All Resources ΓöÇΓöÇ
+  [INFO] Resource listing:
+    Available MCP Resources:
+    [mock-server-1] file://docs/api ΓÇö API Documentation: API reference docs
+    [mock-server-1] file://docs/schema ΓÇö Database Schema: DB schema reference
+    [mock-server-2] config://app/settings ΓÇö App Settings
+  Γ£à PASS ΓÇö Lists resources from server 1
+  Γ£à PASS ΓÇö Lists resources from server 2
+  Γ£à PASS ΓÇö Lists API Documentation resource
+  Γ£à PASS ΓÇö Lists App Settings resource
+
+ΓöÇΓöÇ Phase 3: Read Specific Resource ΓöÇΓöÇ
+  [INFO] Resource content:
+    # API Documentation
+    
+    ## GET /users
+    Returns a list of users.
+  Γ£à PASS ΓÇö Read API resource returns correct content
+  Γ£à PASS ΓÇö Read schema resource returns SQL
+
+ΓöÇΓöÇ Phase 4: Resource Error Handling ΓöÇΓöÇ
+  Γ£à PASS ΓÇö Returns error for nonexistent resource
+  Γ£à PASS ΓÇö Returns error when URI is missing
+
+ΓöÇΓöÇ Phase 5: List All Prompts ΓöÇΓöÇ
+  [INFO] Prompt listing:
+    Available MCP Prompts:
+    [mock-server-1] debug-assistant ΓÇö Helps debug code issues
+    [mock-server-1] code-reviewer ΓÇö Reviews code quality
+    [mock-server-2] summarizer ΓÇö Summarizes text content
+  Γ£à PASS ΓÇö Lists debug-assistant prompt
+  Γ£à PASS ΓÇö Lists code-reviewer prompt
+  Γ£à PASS ΓÇö Lists summarizer prompt
+  Γ£à PASS ΓÇö Shows server name in listing
+
+ΓöÇΓöÇ Phase 6: Get Specific Prompt ΓöÇΓöÇ
+  [INFO] Prompt content:
+    Please analyze this error and suggest fixes:
+    
+    TypeError: Cannot read property x
+  Γ£à PASS ΓÇö Prompt interpolates arguments correctly
+  Γ£à PASS ΓÇö Summarizer prompt returns correct template
+
+ΓöÇΓöÇ Phase 7: Prompt Error Handling ΓöÇΓöÇ
+  Γ£à PASS ΓÇö Returns error for nonexistent prompt
+  Γ£à PASS ΓÇö Returns error when prompt_name is missing
+
+ΓòöΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòù
+Γòæ  RESULTS: 18/18 tests passed                              Γòæ
+ΓòÜΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓò¥
+
+
+  Γ₧ñ Γ£à Test C: MCP Resources & Prompts: PASSED
+
+ΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûô
+Γûô  Running: Test D: Bi-Directional MCP Host
+ΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûô
+
+
+ΓòöΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòù
+Γòæ  TEST D: Bi-Directional Host ΓÇö MoMo as MCP Server       Γòæ
+ΓòÜΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓò¥
+
+  [INFO] Mock server: C:\Users\Joe\source\MoMoA-Antigravitish\src\tests\mcp_validation\mock_mcp_server.ts
+
+ΓöÇΓöÇ Phase 1: Create MCP Client Transport ΓöÇΓöÇ
+
+ΓöÇΓöÇ Phase 2: MCP Connection & Handshake ΓöÇΓöÇ
+  [INFO] Connecting to mock MCP server...
+[MockMCP] 
+Server 
+started on 
+stdio.
+  [INFO] Connected successfully!
+  Γ£à PASS ΓÇö MCP Client connected to server via stdio
+
+ΓöÇΓöÇ Phase 3: tools/list Discovery ΓöÇΓöÇ
+  [INFO] Discovered 3 tools:
+    ≡ƒöº echo ΓÇö Echoes back the input text
+       Schema: {"type":"object","properties":{"text":{"type":"string","description":"Text to echo back"}},"required":["text"],"$schema":"http://json-schema.org/draft-07/schema#"}
+    ≡ƒöº calculate ΓÇö Performs basic arithmetic
+       Schema: {"type":"object","properties":{"operation":{"type":"string","enum":["add","subtract","multiply"],"description":"The operation"},"a":{"type":"number","description":"First operand"},"b":{"type":"number"
+    ≡ƒöº get_timestamp ΓÇö Returns the current timestamp
+       Schema: {"type":"object","properties":{},"$schema":"http://json-schema.org/draft-07/schema#"}
+  Γ£à PASS ΓÇö At least 3 tools (got: 3)
+  Γ£à PASS ΓÇö Tool 'echo' exposed
+  Γ£à PASS ΓÇö Tool 'calculate' exposed
+  Γ£à PASS ΓÇö Tool 'get_timestamp' exposed
+
+ΓöÇΓöÇ Phase 4: Tool Invocation Round-Trip ΓöÇΓöÇ
+  [INFO] echo response: "ECHO: Bidirectional MCP works!"
+  Γ£à PASS ΓÇö Echo tool invocation returned correct data
+  [INFO] calculate response: "Result: 42"
+  Γ£à PASS ΓÇö Calculate tool returned correct result (6├ù7=42)
+  [INFO] get_timestamp response: "2026-04-06T14:58:22.083Z"
+  Γ£à PASS ΓÇö Timestamp tool returned non-empty value
+
+ΓöÇΓöÇ Phase 5: resources/list Discovery ΓöÇΓöÇ
+  [INFO] Discovered 2 resources:
+    ≡ƒôä file://mock/readme ΓÇö test-readme
+    ≡ƒôä file://mock/config ΓÇö test-config
+  Γ£à PASS ΓÇö At least 2 resources (got: 2)
+  [INFO] Resource content (first 100 chars): "# Mock Server README
+
+This is a test resource exposed by the mock MCP server."
+  Γ£à PASS ΓÇö Resource content is non-null
+
+ΓöÇΓöÇ Phase 6: prompts/list Discovery ΓöÇΓöÇ
+  [INFO] Discovered 2 prompts:
+    ≡ƒÆ¼ debug-helper
+    ≡ƒÆ¼ code-review
+  Γ£à PASS ΓÇö At least 2 prompts (got: 2)
+  [INFO] Prompt message role: user
+  Γ£à PASS ΓÇö Prompt returned a message
+
+ΓöÇΓöÇ Cleanup ΓöÇΓöÇ
+  [INFO] Transport closed.
+
+ΓòöΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòù
+Γòæ  RESULTS: 12/12 tests passed                              Γòæ
+ΓòÜΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓò¥
+
+
+  Γ₧ñ Γ£à Test D: Bi-Directional MCP Host: PASSED
+
+ΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûô
+Γûô  Running: Test A: Dynamic MCP Hot-Plug
+ΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûô
+
+
+ΓòöΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòù
+Γòæ  TEST A: Dynamic MCP Hot-Plug Configuration Loader      Γòæ
+ΓòÜΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓò¥
+
+[Setup] Config written to C:\Users\Joe\AppData\Local\Temp\mcp-hotplug-test-JtZIQ9\mcp_servers.json
+[Setup] Mock server path: C:\Users\Joe\source\MoMoA-Antigravitish\src\tests\mcp_validation\mock_mcp_server.ts
+
+ΓöÇΓöÇ Phase 1: Configuration Parsing ΓöÇΓöÇ
+  Γ£à PASS ΓÇö Manager not initialized before initFromConfig()
+  Γ£à PASS ΓÇö No server names before init
+
+ΓöÇΓöÇ Phase 2: Connection & Tool Discovery ΓöÇΓöÇ
+  [INFO] Connecting to mock MCP server (this may take a few seconds)...
+[MCP-Manager] 
+Loading 1 MCP 
+server(s) 
+from config.
+[MCP-Manager] 
+Connecting to 
+'mock-test': 
+npx -y tsx C:\
+Users\Joe\sour
+ce\MoMoA-Antig
+ravitish\src\t
+ests\mcp_valid
+ation\mock_mcp
+_server.ts
+[MockMCP] 
+Server 
+started on 
+stdio.
+[MCP-Manager] 
+'mock-test': 
+discovered 3 
+tool(s): 
+echo, 
+calculate, 
+get_timestamp
+[MCP-Manager] 
+Watching for 
+config 
+changes: C:\Us
+ers\Joe\AppDat
+a\Local\Temp\m
+cp-hotplug-tes
+t-JtZIQ9\mcp_s
+ervers.json
+  Γ£à PASS ΓÇö Manager initialized after initFromConfig()
+  Γ£à PASS ΓÇö 1 server connected (got: 1)
+  Γ£à PASS ΓÇö Server name is 'mock-test' (got: 'mock-test')
+
+ΓöÇΓöÇ Phase 3: Tool Schema Validation ΓöÇΓöÇ
+  Γ£à PASS ΓÇö Discovered at least 3 tools (got: 3)
+
+  [INFO] Discovered tool schemas:
+    ≡ƒôª mock-test__echo
+       Server: mock-test
+       Description: Echoes back the input text
+       Schema: {
+      "type": "object",
+      "properties": {
+            "text": {
+                  "type": "string",
+                  "description": "Text to echo back"
+            }
+      },
+      "required": 
+    ≡ƒôª mock-test__calculate
+       Server: mock-test
+       Description: Performs basic arithmetic
+       Schema: {
+      "type": "object",
+      "properties": {
+            "operation": {
+                  "type": "string",
+                  "enum": [
+                        "add",
+                        "subtr
+    ≡ƒôª mock-test__get_timestamp
+       Server: mock-test
+       Description: Returns the current timestamp
+       Schema: {
+      "type": "object",
+      "properties": {},
+      "$schema": "http://json-schema.org/draft-07/schema#"
+}
+  Γ£à PASS ΓÇö Discovered 'echo' tool
+  Γ£à PASS ΓÇö Discovered 'calculate' tool
+  Γ£à PASS ΓÇö Discovered 'get_timestamp' tool
+
+ΓöÇΓöÇ Phase 4: Remote Tool Invocation ΓöÇΓöÇ
+  [INFO] echo result: "ECHO: Hello from MoMo!"
+  Γ£à PASS ΓÇö Echo tool returned correct response
+  [INFO] calculate result: "Result: 42"
+  Γ£à PASS ΓÇö Calculate tool returned correct result (17+25=42)
+
+ΓöÇΓöÇ Phase 5: Resource & Prompt Discovery ΓöÇΓöÇ
+  [INFO] Resources found: 2
+    ≡ƒôä file://mock/readme ΓÇö test-readme
+    ≡ƒôä file://mock/config ΓÇö test-config
+  Γ£à PASS ΓÇö Discovered at least 2 resources (got: 2)
+  [INFO] Resource content (first 100 chars): "# Mock Server README
+
+This is a test resource exposed by the mock MCP server."
+  Γ£à PASS ΓÇö Resource content is non-empty
+  [INFO] Prompts found: 2
+    ≡ƒÆ¼ debug-helper
+    ≡ƒÆ¼ code-review
+  Γ£à PASS ΓÇö Discovered at least 2 prompts (got: 2)
+
+ΓöÇΓöÇ Phase 6: Hot-Reload Simulation ΓöÇΓöÇ
+  [INFO] Updated config with second server, triggering reload...
+[MCP-Manager] 
+Hot-plug: 
+adding 
+'mock-test-2'.
+[MCP-Manager] 
+Connecting to 
+'mock-test-2':
+ npx -y tsx C:
+\Users\Joe\sou
+rce\MoMoA-Anti
+gravitish\src\
+tests\mcp_vali
+dation\mock_mc
+p_server.ts
+[MCP-Manager] 
+Config file 
+changed, hot-r
+eloading...
+[MCP-Manager] 
+Hot-plug: 
+adding 
+'mock-test-2'.
+[MCP-Manager] 
+Connecting to 
+'mock-test-2':
+ npx -y tsx C:
+\Users\Joe\sou
+rce\MoMoA-Anti
+gravitish\src\
+tests\mcp_vali
+dation\mock_mc
+p_server.ts
+[MockMCP] 
+Server 
+started on 
+stdio.
+[MCP-Manager] 
+'mock-test-2':
+ discovered 3 
+tool(s): 
+echo, 
+calculate, 
+get_timestamp
+  Γ£à PASS ΓÇö 2 servers after reload (got: 2)
+  Γ£à PASS ΓÇö Second server 'mock-test-2' connected
+  Γ£à PASS ΓÇö At least 6 tools after reload (3├ù2 servers, got: 6)
+  [INFO] Removed second server from config, triggering reload...
+[MCP-Manager] 
+Hot-unplug: 
+removing 
+'mock-test-2'.
+[MCP-Manager] 
+Disconnected 
+'mock-test-2'.
+  Γ£à PASS ΓÇö Back to 1 server after removal (got: 1)
+  Γ£à PASS ΓÇö Second server cleaned up
+
+ΓöÇΓöÇ Cleanup ΓöÇΓöÇ
+[MCP-Manager] 
+Disconnected 
+'mock-test'.
+[MCP-Manager] 
+All 
+connections 
+shut down.
+  [INFO] Connections shut down, temp files cleaned.
+
+ΓòöΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòù
+Γòæ  RESULTS: 19/19 tests passed                              Γòæ
+ΓòÜΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓò¥
+
+[MockMCP] 
+Server 
+started on 
+stdio.
+[MCP-Manager] 
+'mock-test-2':
+ discovered 3 
+tool(s): 
+echo, 
+calculate, 
+get_timestamp
+
+  Γ₧ñ Γ¥î Test A: Dynamic MCP Hot-Plug: FAILED
+
+ΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûô
+Γûô  Running: E2E Crucible: Self-Healing Integration
+ΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûôΓûô
+
+
+ΓòöΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòù
+Γòæ  E2E CRUCIBLE: Self-Healing Integration Test             Γòæ
+Γòæ  "Zero-Human Autonomous Error Recovery"                  Γòæ
+ΓòÜΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓò¥
+
+
+ΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöü
+  ≡ƒº¬ Scenario: Fibonacci with SyntaxError
+  ≡ƒô¥ A Fibonacci script with a deliberate missing colon on the function definition
+ΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöü
+
+  [15:00:23] [SETUP] Script staged at C:\Users\Joe\AppData\Local\Temp\e2e-crucible-UYOtqz\script.py
+  [15:00:23] [SETUP] Content:
+      Γöé # Calculate the 50th Fibonacci number
+      Γöé def fibonacci(n)
+      Γöé     if n <= 1:
+      Γöé         return n
+      Γöé     a, b = 0, 1
+      Γöé     for i in range(2, n + 1):
+      Γöé         a, b = b, a + b
+      Γöé     return b
+      Γöé 
+      Γöé result = fibonacci(50)
+      Γöé print(f"The 50th Fibonacci number is: {result}")
+      Γöé 
+  [15:00:23] [EXECUTION] Attempt 1/5: Running script...
+(node:29584) 
+[DEP0190] Depr
+ecationWarning
+: Passing 
+args to a 
+child process 
+with shell 
+option true 
+can lead to 
+security vulne
+rabilities, 
+as the 
+arguments are 
+not escaped, 
+only 
+concatenated.
+(Use `node --t
+race-deprecati
+on ...` to 
+show where 
+the warning 
+was created)
+  [15:00:23] [CRASH CAUGHT] Γ¥î Exit code 1
+  [15:00:23] [CRASH CAUGHT] STDERR: File "C:\Users\Joe\AppData\Local\Temp\e2e-crucible-UYOtqz\script.py", line 2
+    def fibonacci(n)
+                    ^
+SyntaxError: expected ':'
+  [15:00:23] [THINKING] Analyzing error and generating fix hypothesis...
+  [15:00:23] [THINKING] Diagnosis: SyntaxError detected: expected ':'
+  [15:00:23] [PATCHING] Applied fix. Updated script:
+      Γöé # Calculate the 50th Fibonacci number
+      Γöé def fibonacci(n):
+      Γöé     if n <= 1:
+      Γöé         return n
+      Γöé     a, b = 0, 1
+      Γöé     for i in range(2, n + 1):
+      Γöé         a, b = b, a + b
+      Γöé     return b
+      Γöé 
+      Γöé result = fibonacci(50)
+      Γöé print(f"The 50th Fibonacci number is: {result}")
+      Γöé 
+  [15:00:23] [EXECUTION] Attempt 2/5: Running script...
+  [15:00:23] [SUCCESS] Γ£à Exit code 0!
+  [15:00:23] [SUCCESS] STDOUT: The 50th Fibonacci number is: 12586269025
+
+  ΓöîΓöÇΓöÇΓöÇ Timeline ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÉ
+  Γöé  [EXECUTION] Attempt 1
+  Γöé  [CRASH CAUGHT] Exit code 1: SyntaxError: expected ':'
+  Γöé  [THINKING/PATCHING] SyntaxError detected: expected ':'
+  Γöé  [RE-EXECUTION] Queued after patch
+  Γöé  [EXECUTION] Attempt 2
+  Γöé  [SUCCESS] Exit code 0
+  ΓööΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÿ
+
+    Γ£à PASS ΓÇö Scenario "Fibonacci with SyntaxError" recovered successfully
+    Γ£à PASS ΓÇö Required self-healing (took 2 attempt(s))
+    Γ£à PASS ΓÇö Final exit code is 0
+    Γ£à PASS ΓÇö Output contains expected value "12586269025"
+    ≡ƒôè Final output: The 50th Fibonacci number is: 12586269025
+
+ΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöü
+  ≡ƒº¬ Scenario: Primes with NameError
+  ≡ƒô¥ A prime-finding script with an undefined variable
+ΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöü
+
+  [15:00:23] [SETUP] Script staged at C:\Users\Joe\AppData\Local\Temp\e2e-crucible-egQujG\script.py
+  [15:00:23] [SETUP] Content:
+      Γöé # Find all primes under 100
+      Γöé def is_prime(n):
+      Γöé     if n < 2:
+      Γöé         return False
+      Γöé     for i in range(2, int(n**0.5) + 1):
+      Γöé         if n % i == 0:
+      Γöé             return False
+      Γöé     return True
+      Γöé 
+      Γöé primes = [n for n in range(2, max_val) if is_prime(n)]
+      Γöé print(f"Primes under 100: {len(primes)} found")
+      Γöé print(f"Largest prime: {primes[-1]}")
+      Γöé 
+  [15:00:23] [EXECUTION] Attempt 1/5: Running script...
+  [15:00:23] [CRASH CAUGHT] Γ¥î Exit code 1
+  [15:00:23] [CRASH CAUGHT] STDERR: Traceback (most recent call last):
+  File "C:\Users\Joe\AppData\Local\Temp\e2e-crucible-egQujG\script.py", line 10, in <module>
+    primes = [n for n in range(2, max_val) if is_prime(n)]
+NameError: name 'max_val' is not defined
+  [15:00:23] [THINKING] Analyzing error and generating fix hypothesis...
+  [15:00:23] [THINKING] Diagnosis: NameError: 'max_val' was not defined. Inferred default: 100.
+  [15:00:23] [PATCHING] Applied fix. Updated script:
+      Γöé # Find all primes under 100
+      Γöé def is_prime(n):
+      Γöé     if n < 2:
+      Γöé         return False
+      Γöé     for i in range(2, int(n**0.5) + 1):
+      Γöé         if n % i == 0:
+      Γöé             return False
+      Γöé     return True
+      Γöé 
+      Γöé max_val = 100  # auto-fixed: was undefined
+      Γöé primes = [n for n in range(2, max_val) if is_prime(n)]
+      Γöé print(f"Primes under 100: {len(primes)} found")
+      Γöé print(f"Largest prime: {primes[-1]}")
+      Γöé 
+  [15:00:23] [EXECUTION] Attempt 2/5: Running script...
+  [15:00:23] [SUCCESS] Γ£à Exit code 0!
+  [15:00:23] [SUCCESS] STDOUT: Primes under 100: 25 found
+Largest prime: 97
+
+  ΓöîΓöÇΓöÇΓöÇ Timeline ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÉ
+  Γöé  [EXECUTION] Attempt 1
+  Γöé  [CRASH CAUGHT] Exit code 1: NameError: name 'max_val' is not defined
+  Γöé  [THINKING/PATCHING] NameError: 'max_val' was not defined. Inferred default: 100.
+  Γöé  [RE-EXECUTION] Queued after patch
+  Γöé  [EXECUTION] Attempt 2
+  Γöé  [SUCCESS] Exit code 0
+  ΓööΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÿ
+
+    Γ£à PASS ΓÇö Scenario "Primes with NameError" recovered successfully
+    Γ£à PASS ΓÇö Required self-healing (took 2 attempt(s))
+    Γ£à PASS ΓÇö Final exit code is 0
+    Γ£à PASS ΓÇö Output contains expected value "found"
+    ≡ƒôè Final output: Primes under 100: 25 found
+Largest prime: 97
+
+ΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöü
+  ≡ƒº¬ Scenario: Sum calculation with missing parenthesis
+  ≡ƒô¥ A sum script with a missing closing parenthesis on print
+ΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöüΓöü
+
+  [15:00:23] [SETUP] Script staged at C:\Users\Joe\AppData\Local\Temp\e2e-crucible-17Q6Cm\script.py
+  [15:00:23] [SETUP] Content:
+      Γöé # Calculate sum of squares from 1 to 20
+      Γöé total = sum(i**2 for i in range(1, 21))
+      Γöé print(f"Sum of squares 1-20: {total}"
+      Γöé average = total / 20
+      Γöé print(f"Average: {average}")
+      Γöé 
+  [15:00:23] [EXECUTION] Attempt 1/5: Running script...
+  [15:00:23] [CRASH CAUGHT] Γ¥î Exit code 1
+  [15:00:23] [CRASH CAUGHT] STDERR: File "C:\Users\Joe\AppData\Local\Temp\e2e-crucible-17Q6Cm\script.py", line 3
+    print(f"Sum of squares 1-20: {total}"
+         ^
+SyntaxError: '(' was never closed
+  [15:00:23] [THINKING] Analyzing error and generating fix hypothesis...
+  [15:00:23] [THINKING] Diagnosis: SyntaxError detected: '(' was never closed
+  [15:00:23] [PATCHING] Applied fix. Updated script:
+      Γöé # Calculate sum of squares from 1 to 20
+      Γöé total = sum(i**2 for i in range(1, 21))
+      Γöé print(f"Sum of squares 1-20: {total}")
+      Γöé average = total / 20
+      Γöé print(f"Average: {average}")
+      Γöé 
+  [15:00:23] [EXECUTION] Attempt 2/5: Running script...
+  [15:00:23] [SUCCESS] Γ£à Exit code 0!
+  [15:00:23] [SUCCESS] STDOUT: Sum of squares 1-20: 2870
+Average: 143.5
+
+  ΓöîΓöÇΓöÇΓöÇ Timeline ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÉ
+  Γöé  [EXECUTION] Attempt 1
+  Γöé  [CRASH CAUGHT] Exit code 1: SyntaxError: '(' was never closed
+  Γöé  [THINKING/PATCHING] SyntaxError detected: '(' was never closed
+  Γöé  [RE-EXECUTION] Queued after patch
+  Γöé  [EXECUTION] Attempt 2
+  Γöé  [SUCCESS] Exit code 0
+  ΓööΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÿ
+
+    Γ£à PASS ΓÇö Scenario "Sum calculation with missing parenthesis" recovered successfully
+    Γ£à PASS ΓÇö Required self-healing (took 2 attempt(s))
+    Γ£à PASS ΓÇö Final exit code is 0
+    Γ£à PASS ΓÇö Output contains expected value "Sum of squares"
+    ≡ƒôè Final output: Sum of squares 1-20: 2870
+Average: 143.5
+
+ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
+
+ΓòöΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòù
+Γòæ  E2E CRUCIBLE RESULTS: 12/12 assertions passed                    Γòæ
+ΓòÜΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓò¥
+
+
+  Γ₧ñ Γ£à E2E Crucible: Self-Healing Integration: PASSED
+
+
+ΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûê
+Γûê                                                          Γûê
+Γûê   GRAND SUMMARY                                          Γûê
+Γûê                                                          Γûê
+ΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûê
+
+  Γ£à Test B: Self-Healing Retry Logic
+  Γ£à Test C: MCP Resources & Prompts
+  Γ£à Test D: Bi-Directional MCP Host
+  Γ¥î Test A: Dynamic MCP Hot-Plug
+  Γ£à E2E Crucible: Self-Healing Integration
+
+  Total: 4/5 suites passed
+
+ΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûêΓûê
+

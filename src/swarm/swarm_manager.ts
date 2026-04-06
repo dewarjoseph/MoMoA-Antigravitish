@@ -10,7 +10,8 @@ import { spawn } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { SwarmDispatchOptions, DEFAULT_STRATEGIES } from './types.js';
-import { LocalStore } from '../persistence/local_store.js';
+import { LocalStore, SessionState } from '../persistence/local_store.js';
+import * as crypto from 'node:crypto';
 
 export class SwarmManager {
   private store: LocalStore;
@@ -52,9 +53,22 @@ export class SwarmManager {
 
         try {
           this.log(`[${agentIndex}/${opts.count}] Dispatching: ${strategy} agent#${i + 1}`);
-          await this.spawnJulesWorker(prompt, opts.repo, opts.branch);
-          dispatched.push(`${strategy}/agent${i + 1}`);
-          this.log(`  -> [OK] Dispatched successfully`);
+          const stdout = await this.spawnJulesWorker(prompt, opts.repo, opts.branch);
+          const sessionId = this.parseSessionId(stdout, `${strategy}-${i + 1}`);
+          
+          this.store.saveSession(sessionId, {
+            id: sessionId,
+            state: 'AWAITING_REVIEW', // Optimistically waiting tracking
+            strategy: strategy,
+            agentNumber: i + 1,
+            pulled: false,
+            approved: false,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          });
+
+          dispatched.push(sessionId);
+          this.log(`  -> [OK] Dispatched successfully (Session ID: ${sessionId})`);
         } catch (err) {
           const errorMsg = err instanceof Error ? err.message : String(err);
           this.log(`  -> [FAIL] ${errorMsg}`);
@@ -94,9 +108,22 @@ export class SwarmManager {
 
       for (let i = 0; i < agentsPerPrompt; i++) {
         try {
-          await this.spawnJulesWorker(promptFile.content, opts.repo, opts.branch);
-          dispatched.push(`${promptFile.name}/agent${i + 1}`);
-          this.log(`  [OK] agent#${i + 1} dispatched`);
+          const stdout = await this.spawnJulesWorker(promptFile.content, opts.repo, opts.branch);
+          const sessionId = this.parseSessionId(stdout, `prompt-${promptFile.name}-${i + 1}`);
+          
+          this.store.saveSession(sessionId, {
+            id: sessionId,
+            state: 'AWAITING_REVIEW',
+            strategy: promptFile.name,
+            agentNumber: i + 1,
+            pulled: false,
+            approved: false,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          });
+
+          dispatched.push(sessionId);
+          this.log(`  [OK] agent#${i + 1} dispatched (Session ID: ${sessionId})`);
         } catch (err) {
           const errorMsg = err instanceof Error ? err.message : String(err);
           this.log(`  [FAIL] agent#${i + 1}: ${errorMsg}`);
@@ -107,6 +134,18 @@ export class SwarmManager {
     }
 
     return dispatched;
+  }
+
+  /**
+   * Helper to parse Jules session ID from STDOUT, with fallback to crypto.randomUUID
+   */
+  private parseSessionId(stdout: string, fallbackPrefix: string): string {
+    const match = stdout.match(/ID:\s*(\d+)/i);
+    if (match && match[1]) {
+      return match[1];
+    }
+    // Fallback if stdout formatting changes or local mock
+    return `${fallbackPrefix}-${crypto.randomUUID().substring(0, 8)}`;
   }
 
   /**

@@ -121,8 +121,9 @@ graph TB
 | **Orchestrator** | `selfHealingRunner` field | `src/momoa_core/orchestrator.ts` | ~84 | Wired into tool execution at ~767 |
 | **Orchestrator** | `emergencyShutdown()` | `src/momoa_core/orchestrator.ts` | ~1060 | Cleanup Jules branches |
 | **Overseer** | `_performReview()` | `src/momoa_core/overseer.ts` | ~150 | AI-driven worklog review |
-| **Swarm** | `SwarmManager.dispatch()` | `src/swarm/swarm_manager.ts` | 30 | Dispatch N agents |
-| **Swarm** | `SessionPoller.startPolling()` | `src/swarm/session_poller.ts` | ~180 | Polling daemon loop |
+| **Swarm** | `SessionPoller` | `src/swarm/session_poller.ts` | 335 | Daemon loop evaluating wait/pull tasks via API/CLI |
+| **Swarm** | `MergeSupervisor` | `src/swarm/merge_supervisor.ts` | 65 | Gemini AI automated differential merger & semantic code review |
+| **Swarm** | `generateStatusReport()` | `src/swarm/report_writer.ts` | ~120 | Status markdown generation formatter |
 | **Persistence** | `LocalStore` | `src/persistence/local_store.ts` | 22 | FS-based session/log storage |
 | **Tools** | `executeTool()` | `src/tools/multiAgentToolRegistry.ts` | 77 | Tool dispatch |
 | **Tools** | `registerTool()` | `src/tools/multiAgentToolRegistry.ts` | 44 | Tool registration |

@@ -18,6 +18,9 @@ import { SwarmManager } from './swarm/swarm_manager.js';
 import { SessionPoller } from './swarm/session_poller.js';
 import { LocalStore } from './persistence/local_store.js';
 import { DEFAULT_STRATEGIES } from './swarm/types.js';
+import { GeminiClient } from './services/geminiClient.js';
+import { ApiPolicyManager } from './services/apiPolicyManager.js';
+import { ConcreteInfrastructureContext } from './services/infrastructure.js';
 
 // --- Global error handlers ---
 const store = new LocalStore('.swarm');
@@ -42,6 +45,15 @@ program
   .name('momo-overseer')
   .description('Headless CLI daemon for autonomous Jules swarm orchestration & MCP server')
   .version('1.0.0');
+
+function createGeminiClient(): GeminiClient {
+  const infraContext = new ConcreteInfrastructureContext();
+  const apiPolicyManager = new ApiPolicyManager();
+  return new GeminiClient(
+    { apiKey: process.env.GEMINI_API_KEY ?? '', context: infraContext },
+    apiPolicyManager,
+  );
+}
 
 // --- daemon command ---
 program
@@ -115,6 +127,7 @@ swarm
       pollIntervalMs: opts.interval,
       maxPolls: opts.maxPolls,
       store,
+      geminiClient: createGeminiClient(),
     });
 
     await poller.startPolling(path.resolve(opts.repoRoot));
@@ -137,6 +150,7 @@ swarm
       sessionIds: sessionIds,
       strategies: opts.strategies ?? DEFAULT_STRATEGIES,
       store,
+      geminiClient: createGeminiClient(),
     });
 
     console.log('Running single triage pass...');
