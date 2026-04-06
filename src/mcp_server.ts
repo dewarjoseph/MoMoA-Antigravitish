@@ -34,6 +34,23 @@ async function buildLocalContext(
   projectDir: string,
   mcpManager?: McpClientManager
 ): Promise<MultiAgentToolContext> {
+  // Aggressively load local .env variables to ensure keys like GEMINI_API_KEY are available
+  // out-of-band when VSCode spawns the daemon cleanly.
+  try {
+      const envPath = path.join(projectDir, '.env');
+      if (fs.existsSync(envPath)) {
+          const envRaw = fs.readFileSync(envPath, 'utf8');
+          for (const line of envRaw.split('\n')) {
+              const matched = line.trim().match(/^([^=]+)=(.*)$/);
+              if (matched) {
+                  process.env[matched[1].trim()] = matched[2].trim();
+              }
+          }
+      }
+  } catch (e) {
+      process.stderr.write(`[MoMo-MCP] Failed to parse .env silently: ${e}\n`);
+  }
+
   const secrets: UserSecrets = {
     geminiApiKey: process.env.GEMINI_API_KEY ?? '',
     julesApiKey: process.env.JULES_API_KEY ?? '',
