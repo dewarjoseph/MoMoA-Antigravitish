@@ -52,8 +52,12 @@ export const julesMonitorSessionTool: MultiAgentTool = {
         }, null, 2)
       };
     } catch (e: any) {
-      context.sendMessage(`[Jules REST Error] Failed to monitor session: ${e.message}`);
-      return { result: `Failed: ${e.message}` };
+      if (e.name === 'JulesHttpError') {
+          context.sendMessage(e.message);
+          return { result: `REST API Pipeline Fatally Error'd: \n${e.message}` };
+      }
+      context.sendMessage(`[Jules REST Fatal] Failed to monitor session dynamically: ${e.message}`);
+      return { result: `System execution trace explicitly dropped. Reason: ${e.message}` };
     }
   },
 

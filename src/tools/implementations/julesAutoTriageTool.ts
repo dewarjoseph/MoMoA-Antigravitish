@@ -82,8 +82,12 @@ export const julesAutoTriageTool: MultiAgentTool = {
       return { result: `Triage N/A: Session is in state ${session.state}. No auto-triage required.` };
 
     } catch (e: any) {
-      context.sendMessage(`[Jules REST Error] Triage pipeline crashed: ${e.message}`);
-      return { result: `Triage Failed: ${e.message}` };
+      if (e.name === 'JulesHttpError') {
+          context.sendMessage(e.message);
+          return { result: `REST API Pipeline Fatally Error'd: \n${e.message}` };
+      }
+      context.sendMessage(`[Jules REST Fatal] Triage pipeline dynamically crashed: ${e.message}`);
+      return { result: `System execution triage explicitly dropped. Reason: ${e.message}` };
     }
   },
 
