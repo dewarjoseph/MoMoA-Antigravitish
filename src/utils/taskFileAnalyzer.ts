@@ -21,7 +21,8 @@ import { TranscriptManager } from "../services/transcriptManager";
 import { removeBacktickFences, repairTruncatedJsonArray, replaceContentBetweenMarkers } from "./markdownUtils"; 
 import { InfrastructureContext, MultiAgentToolContext } from "../momoa_core/types"; 
 import { parseToolRequest } from "../tools/multiAgentToolParser";
-import { executeTool, getTool } from "../tools/multiAgentToolRegistry";
+// Dynamic import used later to break circular dependency:
+// import { executeTool, getTool } from "../tools/multiAgentToolRegistry";
 
 /**
  * Defines the output structure for a file's relevance to a specific task.
@@ -251,13 +252,16 @@ export async function analyzeRelevantFilesForTask(
     }
     
     if (toolRequest?.toolName) {
+      // Dynamically import registry to avoid initialization cycle
+      const registry = await import("../tools/multiAgentToolRegistry.js");
+
       // A standard tool was found
-      const tool = getTool(toolRequest.toolName);
+      const tool = registry.getTool(toolRequest.toolName);
       await updateLog(`'${tool?.displayName || toolRequest.toolName}' Invoked`);
 
       try {
         // Execute the tool using the standard function
-        const toolResult = await executeTool(toolRequest.toolName, toolRequest.params, toolContext);
+        const toolResult = await registry.executeTool(toolRequest.toolName, toolRequest.params, toolContext);
 
         // Add to transcript with replacement string (for hiding content)
         transcript.addEntry('user', toolResult.result, { 
