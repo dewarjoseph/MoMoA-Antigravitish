@@ -152,11 +152,8 @@ export async function createMcpServer(
   const context = await buildLocalContext(projectDir, mcpManager);
 
   const toolNames = getToolNames();
-  const legacyNlpTools = new Set(['PHONEAFRIEND', 'PARADOX', 'RESTART_PROJECT{', 'FACTFINDER']);
 
   for (const toolName of toolNames) {
-    if (legacyNlpTools.has(toolName)) continue;
-    
     const tool = getTool(toolName);
     if (!tool) continue;
 
@@ -233,6 +230,46 @@ export async function createMcpServer(
     } else if (mcpToolName === 'UPDATE_RESEARCH_LOG') {
         toolSchema = {
             entry: z.string().describe("The research log text to boldly append to RESEARCH_LOG.md"),
+        };
+    } else if (mcpToolName === 'SWARM_DISPATCH') {
+        toolSchema = {
+            count: z.number().describe("Number of autonomous agent streams to spawn in parallel."),
+            repo: z.string().describe("Target GitHub repository (e.g., moongate-engineering/MoMoA-Antigravitish)"),
+            basePrompt: z.string().optional().describe("Core instruction provided to all agents"),
+            branch: z.string().optional().describe("Branch name to apply changes to"),
+            strategies: z.array(z.string()).optional().describe("Assign strategy prefixes to spawned agents"),
+            promptDir: z.string().optional().describe("Optional path overriding basePrompt mapping"),
+        };
+    } else if (mcpToolName === 'SUPERVISE_MERGE') {
+        toolSchema = {
+            branch: z.string().describe("Feature branch containing unmerged changes"),
+            sessionTitle: z.string().describe("Descriptive title mapping to the original task goal"),
+            repoPath: z.string().optional().describe("Local path to the repository directory"),
+            sessionId: z.string().optional().describe("A tracking ID to associate with the merge context"),
+        };
+    } else if (mcpToolName === 'SWARM_STATUS') {
+        toolSchema = {
+            targetDir: z.string().optional().describe("Optional explicit repo directory to poll for logs"),
+        };
+    } else if (mcpToolName === 'SWARM_CLEANUP') {
+        toolSchema = {
+            targetDir: z.string().optional().describe("Local working directory to wipe previous runs from"),
+        };
+    } else if (mcpToolName === 'PHONEAFRIEND') {
+        toolSchema = {
+            question: z.string().describe("The question, issue summary, and any RELEVANT_FILES block for the expert."),
+        };
+    } else if (mcpToolName === 'PARADOX') {
+        toolSchema = {
+            paradox: z.string().describe("The paradox statement or conflicting instructions to synthesize."),
+        };
+    } else if (mcpToolName === 'RESTART_PROJECT') {
+        toolSchema = {
+            instruction: z.string().describe("The reason and scope for restarting the project context."),
+        };
+    } else if (mcpToolName === 'FACTFINDER') {
+        toolSchema = {
+            question: z.string().describe("The question requiring web lookup or deep knowledge mining."),
         };
     } else if (tool instanceof DynamicMcpTool) {
         // Dynamic MCP tools: build schema from discovered inputSchema
