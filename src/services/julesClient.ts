@@ -1,3 +1,25 @@
+export class JulesHttpError extends Error {
+  public url: string;
+  public status: number;
+  public statusText: string;
+  public responseBody: any;
+
+  constructor(url: string, status: number, statusText: string, responseBody: any) {
+    let msg = `[Jules REST] HTTP ${status} ${statusText} at ${url}`;
+    if (responseBody && responseBody.error) {
+      msg += `\\n  -> Details: ${JSON.stringify(responseBody.error)}`;
+    } else if (responseBody) {
+      msg += `\\n  -> Body: ${JSON.stringify(responseBody)}`;
+    }
+    super(msg);
+    this.name = 'JulesHttpError';
+    this.url = url;
+    this.status = status;
+    this.statusText = statusText;
+    this.responseBody = responseBody;
+  }
+}
+
 export class JulesClient {
   private readonly baseUrl = 'https://jules.googleapis.com/v1alpha';
 
@@ -12,14 +34,37 @@ export class JulesClient {
     };
   }
 
+  private async executeFetch(url: string, options: RequestInit): Promise<any> {
+    const res = await fetch(url, options);
+    
+    if (!res.ok) {
+      let errorBody: any;
+      try {
+        // Specifically trap JSON schema errors generated natively by Google REST engines 
+        // to avoid "hallucinating" basic success or generic failure.
+        errorBody = await res.json();
+      } catch (e) {
+         try {
+             errorBody = await res.text();
+         } catch {
+             errorBody = "[Unparseable Payload]";
+         }
+      }
+      throw new JulesHttpError(url, res.status, res.statusText, errorBody);
+    }
+    
+    // Some successful posts might return empty bodies; gracefully handle `json()` fails
+    try {
+        return await res.json();
+    } catch {
+        return {};
+    }
+  }
+
   async listSources(pageSize: number = 30, filter?: string) {
     let url = `${this.baseUrl}/sources?pageSize=${pageSize}`;
-    if (filter) {
-      url += `&filter=${encodeURIComponent(filter)}`;
-    }
-    const res = await fetch(url, { headers: this.headers });
-    if (!res.ok) throw new Error(`[JulesClient] listSources failed: ${res.statusText} ${await res.text()}`);
-    return res.json();
+    if (filter) url += `&filter=${encodeURIComponent(filter)}`;
+    return this.executeFetch(url, { headers: this.headers });
   }
 
   async createSession(prompt: string, sourceContext: any, title?: string, requirePlanApproval?: boolean) {
@@ -27,44 +72,38 @@ export class JulesClient {
     if (title) body.title = title;
     if (requirePlanApproval !== undefined) body.requirePlanApproval = requirePlanApproval;
 
-    const res = await fetch(`${this.baseUrl}/sessions`, {
+    return this.executeFetch(`${this.baseUrl}/sessions`, {
       method: 'POST',
       headers: this.headers,
       body: JSON.stringify(body),
     });
-    if (!res.ok) throw new Error(`[JulesClient] createSession failed: ${res.statusText} ${await res.text()}`);
-    return res.json();
   }
 
   async getSession(sessionId: string) {
-    const res = await fetch(`${this.baseUrl}/sessions/${sessionId}`, { headers: this.headers });
-    if (!res.ok) throw new Error(`[JulesClient] getSession failed: ${res.statusText} ${await res.text()}`);
-    return res.json();
+    const id = sessionId.replace(/^sessions\//, '');
+    return this.executeFetch(`${this.baseUrl}/sessions/${id}`, { headers: this.headers });
   }
 
   async listActivities(sessionId: string, pageSize: number = 50) {
-    const res = await fetch(`${this.baseUrl}/sessions/${sessionId}/activities?pageSize=${pageSize}`, { headers: this.headers });
-    if (!res.ok) throw new Error(`[JulesClient] listActivities failed: ${res.statusText} ${await res.text()}`);
-    return res.json();
+    const id = sessionId.replace(/^sessions\//, '');
+    return this.executeFetch(`${this.baseUrl}/sessions/${id}/activities?pageSize=${pageSize}`, { headers: this.headers });
   }
 
   async approvePlan(sessionId: string) {
-    const res = await fetch(`${this.baseUrl}/sessions/${sessionId}:approvePlan`, {
+    const id = sessionId.replace(/^sessions\//, '');
+    return this.executeFetch(`${this.baseUrl}/sessions/${id}:approvePlan`, {
       method: 'POST',
       headers: this.headers,
       body: '{}',
     });
-    if (!res.ok) throw new Error(`[JulesClient] approvePlan failed: ${res.statusText} ${await res.text()}`);
-    return res.json();
   }
 
   async sendMessage(sessionId: string, prompt: string) {
-    const res = await fetch(`${this.baseUrl}/sessions/${sessionId}:sendMessage`, {
+    const id = sessionId.replace(/^sessions\//, '');
+    return this.executeFetch(`${this.baseUrl}/sessions/${id}:sendMessage`, {
       method: 'POST',
       headers: this.headers,
       body: JSON.stringify({ prompt }),
     });
-    if (!res.ok) throw new Error(`[JulesClient] sendMessage failed: ${res.statusText} ${await res.text()}`);
-    return res.json();
   }
 }

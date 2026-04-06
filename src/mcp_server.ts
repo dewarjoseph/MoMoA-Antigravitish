@@ -12,6 +12,10 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { Console } from 'node:console';
+
+// Redirect global console completely to stderr, protecting MCP stdio transport JSON-RPC.
+global.console = new Console(process.stderr, process.stderr);
 
 // Import tool registry
 import { getToolNames, getTool, registerDynamicMcpTools } from './tools/multiAgentToolRegistry.js';
@@ -34,6 +38,23 @@ async function buildLocalContext(
   projectDir: string,
   mcpManager?: McpClientManager
 ): Promise<MultiAgentToolContext> {
+  // Aggressively load local .env variables to ensure keys like GEMINI_API_KEY are available
+  // out-of-band when VSCode spawns the daemon cleanly.
+  try {
+      const envPath = path.join(projectDir, '.env');
+      if (fs.existsSync(envPath)) {
+          const envRaw = fs.readFileSync(envPath, 'utf8');
+          for (const line of envRaw.split('\n')) {
+              const matched = line.trim().match(/^([^=]+)=(.*)$/);
+              if (matched) {
+                  process.env[matched[1].trim()] = matched[2].trim();
+              }
+          }
+      }
+  } catch (e) {
+      process.stderr.write(`[MoMo-MCP] Failed to parse .env silently: ${e}\n`);
+  }
+
   const secrets: UserSecrets = {
     geminiApiKey: process.env.GEMINI_API_KEY ?? '',
     julesApiKey: process.env.JULES_API_KEY ?? '',
@@ -131,7 +152,7 @@ export async function createMcpServer(
   const context = await buildLocalContext(projectDir, mcpManager);
 
   const toolNames = getToolNames();
-  const legacyNlpTools = new Set(['PHONEAFRIEND', 'PARADOX', 'RESTART_PROJECT{', 'UPDATE_RESEARCH_LOG', 'FACTFINDER']);
+  const legacyNlpTools = new Set(['PHONEAFRIEND', 'PARADOX', 'RESTART_PROJECT{', 'FACTFINDER']);
 
   for (const toolName of toolNames) {
     if (legacyNlpTools.has(toolName)) continue;
@@ -190,6 +211,28 @@ export async function createMcpServer(
             server: z.string().optional().describe("MCP server name to get prompt from. Omit to list all prompts."),
             prompt_name: z.string().optional().describe("Name of the prompt to retrieve."),
             args: z.record(z.string(), z.string()).optional().describe("Arguments to pass to the prompt template."),
+        };
+    } else if (mcpToolName === 'JULES_CREATE_SESSION') {
+        toolSchema = {
+            prompt: z.string().describe("The task description for Jules to execute."),
+            sourceId: z.string().describe("The source repository ID. Example: sources/123"),
+            branch: z.string().optional().describe("Optional starting branch. Defaults to main."),
+            title: z.string().optional().describe("Optional title for the session."),
+            requirePlanApproval: z.boolean().optional().describe("If true, plans require standard manual approval."),
+        };
+    } else if (mcpToolName === 'JULES_MONITOR_SESSION') {
+        toolSchema = {
+            sessionId: z.string().describe("The session ID. Example: sessions/123"),
+        };
+    } else if (mcpToolName === 'JULES_AUTO_TRIAGE') {
+        toolSchema = {
+            sessionId: z.string().describe("The session ID waiting for approval/triage."),
+        };
+    } else if (mcpToolName === 'GET_MEMORY_STATS') {
+        toolSchema = {}; // No params needed, purely an internal invocation
+    } else if (mcpToolName === 'UPDATE_RESEARCH_LOG') {
+        toolSchema = {
+            entry: z.string().describe("The research log text to boldly append to RESEARCH_LOG.md"),
         };
     } else if (tool instanceof DynamicMcpTool) {
         // Dynamic MCP tools: build schema from discovered inputSchema

@@ -21,6 +21,11 @@ async function run() {
   
   // Create a mock context to test syntax and extraction
   const mockContext = {
+    originalFileMap: new Map(),
+    fileMap: new Map(),
+    editedFilesSet: new Set(),
+    binaryFileMap: new Map(),
+    originalBinaryFileMap: new Map(),
     sendMessage: (msg: string) => console.log(`[Swarm Notify] ${msg}`),
     multiAgentGeminiClient: {
        sendOneShotMessage: async () => ({ text: "YES" }) // Dummy implementation

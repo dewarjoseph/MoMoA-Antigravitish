@@ -53,15 +53,14 @@ export const researchLogTool: MultiAgentTool = {
     context.fileMap.set(logFilename, updatedContent);
     context.editedFilesSet.add(logFilename);
 
-    // Sync to disk if saveFiles is enabled
+    // Sync to disk permanently since we are operating in a Headless MCP daemon
     if (context.saveFiles) {
-      context.sendMessage(JSON.stringify({
-        status: 'APPLY_FILE_CHANGE',
-        data: {
-          filename: logFilename,
-          content: Buffer.from(updatedContent).toString('base64'),
-        }
-      }));
+      const fs = require('fs');
+      try {
+        fs.writeFileSync(logFilename, updatedContent, { encoding: 'utf-8' });
+      } catch (err: any) {
+        return { result: `Error syncing Research Log to disk: ${err.message}` };
+      }
     }
 
     const successMsg = `Appended Research Log entry to \`${logFilename}\`\n\`\`\`\`\n${trimmed}\n\`\`\`\``;

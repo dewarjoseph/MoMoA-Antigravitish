@@ -6,14 +6,16 @@ export const julesCreateSessionTool: MultiAgentTool = {
   displayName: "Jules Create Session Tool",
   name: "JULES_CREATE_SESSION",
 
-  async execute(params: Record<string, string>, context: MultiAgentToolContext): Promise<MultiAgentToolResult> {
+  async execute(params: Record<string, any>, context: MultiAgentToolContext): Promise<MultiAgentToolResult> {
     const client = new JulesClient();
     
-    let args;
-    try {
-      args = JSON.parse(params.jsonArgs);
-    } catch {
-      return { result: "Failed to parse arguments for JULES_CREATE_SESSION. Expected JSON string." };
+    let args = params;
+    if (typeof params.jsonArgs === 'string') {
+      try {
+        args = JSON.parse(params.jsonArgs);
+      } catch (e: any) {
+        return { result: `Failed to parse arguments for JULES_CREATE_SESSION. Expected JSON string but received: "${params.jsonArgs}". Error: ${e.message}` };
+      }
     }
 
     const sourceContext = {
@@ -35,8 +37,12 @@ export const julesCreateSessionTool: MultiAgentTool = {
         }, null, 2)
       };
     } catch (e: any) {
-      context.sendMessage(`[Jules REST Error] Failed to create session: ${e.message}`);
-      return { result: `Failed: ${e.message}` };
+      if (e.name === 'JulesHttpError') {
+          context.sendMessage(e.message);
+          return { result: `REST API Pipeline Fatally Error'd: \n${e.message}` };
+      }
+      context.sendMessage(`[Jules REST Fatal] Failed to create session dynamically: ${e.message}`);
+      return { result: `System execution trace explicitly dropped. Reason: ${e.message}` };
     }
   },
 
