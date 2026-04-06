@@ -43,6 +43,10 @@ import { withDeadline } from '../utils/timeoutHelper.js';
 import { CleanFormattedDateTime } from '../utils/dateTimeStrings.js';
 import { checkContainerMemory } from '../utils/memoryChecker.js';
 import { SelfHealingRunner } from '../mcp/selfHealingRunner.js';
+import { HiveMind } from '../memory/hiveMind.js';
+import { SwarmTracer } from '../telemetry/tracer.js';
+import { SpanKind, SpanStatus } from '../telemetry/types.js';
+import { HitlManager } from '../hitl/hitlManager.js';
 
 const EXISTING_FILES_ID = "EXISTING_FILES_ID";
 const EXISTING_FAQ_ID = "EXISTING_FAQ_ID";
@@ -440,6 +444,45 @@ export class Orchestrator {
       let isDone = false;
       let turnCount = 1;
       const maxOrchestratorTurns = this.maxTurns*4;
+
+      // --- Phase 5: Initialize Glass Swarm Telemetry ---
+      let traceContext;
+      try {
+        const tracer = SwarmTracer.getInstance();
+        traceContext = tracer.startTrace(`Orchestrator: ${sessionTitle}`, {
+          'session.title': sessionTitle,
+          'session.prompt': this.initialPrompt.substring(0, 200),
+        });
+        this.toolContext.tracer = tracer;
+        this.toolContext.activeTraceContext = traceContext;
+        process.stderr.write(`[Orchestrator] Telemetry trace started: ${traceContext.traceId.substring(0, 16)}...\n`);
+      } catch (telErr: any) {
+        process.stderr.write(`[Orchestrator] Telemetry init failed (non-critical): ${telErr.message}\n`);
+      }
+
+      // --- Phase 5: Initialize Hive Mind & HITL ---
+      try {
+        this.toolContext.hiveMind = HiveMind.getInstance();
+        this.toolContext.hitlManager = HitlManager.getInstance();
+      } catch { /* non-critical */ }
+
+      // --- Phase 5: Hive Mind Pre-Query Hook ---
+      try {
+        const hiveMind = HiveMind.getInstance();
+        const lessons = await hiveMind.query(this.initialPrompt.substring(0, 500), 3);
+        if (lessons.length > 0) {
+          const lessonText = lessons.map((l, i) => {
+            return `${i + 1}. [${(l.similarity * 100).toFixed(0)}% match] ${l.triplet.context.substring(0, 150)} → ${l.triplet.outcome.substring(0, 150)}`;
+          }).join('\n');
+
+          const hiveMindContext = `\n\n## Hive Mind: Relevant Past Lessons\nThe following lessons from past sessions may be relevant:\n${lessonText}\n`;
+          this.transcriptManager.addEntry('user', hiveMindContext);
+          process.stderr.write(`[Orchestrator] Hive Mind injected ${lessons.length} past lesson(s) into context.\n`);
+          await this.updateProgressLog(`Hive Mind: Found ${lessons.length} relevant past lesson(s)`);
+        }
+      } catch (hiveErr: any) {
+        process.stderr.write(`[Orchestrator] Hive Mind pre-query failed (non-critical): ${hiveErr.message}\n`);
+      }
 
       await this.updateProgressLog("\n## Primary Orchestration loop")
 

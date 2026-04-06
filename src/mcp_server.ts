@@ -271,6 +271,45 @@ export async function createMcpServer(
         toolSchema = {
             question: z.string().describe("The question requiring web lookup or deep knowledge mining."),
         };
+    // --- Phase 5: Four Pillars Tool Schemas ---
+    } else if (mcpToolName === 'QUERY_HIVE_MIND') {
+        toolSchema = {
+            query: z.string().describe("The text to search for in the Hive Mind memory."),
+            topK: z.number().optional().describe("Number of results to return (default: 5)."),
+            tags: z.array(z.string()).optional().describe("Filter results by tags."),
+        };
+    } else if (mcpToolName === 'WRITE_HIVE_MIND') {
+        toolSchema = {
+            context: z.string().describe("What the swarm was trying to accomplish."),
+            action: z.string().describe("What tool/prompt/approach was used."),
+            outcome: z.string().describe("Whether it succeeded, failed, and the resolution."),
+            tags: z.array(z.string()).optional().describe("Searchable tags for categorization."),
+            isGoldStandard: z.boolean().optional().describe("Whether this is a human-sourced gold standard solution."),
+        };
+    } else if (mcpToolName === 'ASK_HUMAN') {
+        toolSchema = {
+            question: z.string().describe("The question or issue requiring human input."),
+            context: z.string().optional().describe("Additional context (error logs, trace links)."),
+            urgency: z.enum(['low', 'medium', 'high', 'critical']).optional().describe("How urgent the request is."),
+            traceId: z.string().optional().describe("Associated trace ID for telemetry correlation."),
+        };
+    } else if (mcpToolName === 'HITL_STATUS') {
+        toolSchema = {}; // No params needed
+    } else if (mcpToolName === 'RESPOND_TO_HUMAN') {
+        toolSchema = {
+            requestId: z.string().describe("The HITL request ID from ASK_HUMAN output."),
+            answer: z.string().describe("The human's response to the pending question."),
+        };
+    } else if (mcpToolName === 'SEARCH_MCP_REGISTRY') {
+        toolSchema = {
+            capability: z.string().describe("Description of the capability to search for."),
+            autoInstall: z.boolean().optional().describe("Whether to auto-install the best match (requires HITL approval)."),
+        };
+    } else if (mcpToolName === 'TELEMETRY_DASHBOARD') {
+        toolSchema = {
+            traceId: z.string().optional().describe("Specific trace ID to view in detail."),
+            last: z.number().optional().describe("Number of recent traces to show (default: 10)."),
+        };
     } else if (tool instanceof DynamicMcpTool) {
         // Dynamic MCP tools: build schema from discovered inputSchema
         toolSchema = buildZodSchemaFromJson(tool.getInputSchema());

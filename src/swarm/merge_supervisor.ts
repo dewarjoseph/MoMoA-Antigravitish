@@ -9,6 +9,9 @@ import { getExpertPrompt } from "../services/promptManager.js";
 import { removeBacktickFences } from "../utils/markdownUtils.js";
 import type { MultiAgentToolContext } from "../momoa_core/types.js";
 import { executeTool } from "../tools/multiAgentToolRegistry.js";
+import { HiveMind } from "../memory/hiveMind.js";
+import { SwarmTracer } from "../telemetry/tracer.js";
+import { SpanKind, SpanStatus } from "../telemetry/types.js";
 import * as path from "node:path";
 import * as fs from "node:fs";
 
@@ -94,8 +97,30 @@ Provide your response strictly in JSON format matching this schema:
         await this.runMcpCommand(`git checkout ${baseBranch}`, repoRoot);
         const mergeResult = await this.runMcpCommand(`git merge ${branchName} --no-edit`, repoRoot);
         console.log(`[MergeSupervisor] Merge output: ${mergeResult}`);
+
+        // --- Hive Mind: Auto-document successful merge ---
+        try {
+          const hiveMind = HiveMind.getInstance();
+          await hiveMind.write(
+            `Merge task: ${taskTitle} (branch: ${branchName})`,
+            `AI-supervised merge of session ${sessionId}. Diff size: ${diffStr.length} chars.`,
+            `Merge approved and completed. Reasoning: ${decision.reasoning}`,
+            { tags: ['merge', 'auto-documented', 'swarm-result'] }
+          );
+        } catch { /* non-critical */ }
       } else {
         console.log(`[MergeSupervisor] AI rejected diff for ${branchName}. Reasoning: ${decision.reasoning}`);
+
+        // --- Hive Mind: Document rejected merge for pattern learning ---
+        try {
+          const hiveMind = HiveMind.getInstance();
+          await hiveMind.write(
+            `Merge rejected: ${taskTitle} (branch: ${branchName})`,
+            `AI rejected merge of session ${sessionId}.`,
+            `Rejected: ${decision.reasoning}`,
+            { tags: ['merge-rejected', 'auto-documented'], confidence: 0.5 }
+          );
+        } catch { /* non-critical */ }
       }
 
       return decision;

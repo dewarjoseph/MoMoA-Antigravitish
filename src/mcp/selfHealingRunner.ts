@@ -18,6 +18,11 @@ import type {
   MultiAgentToolResult,
 } from '../momoa_core/types.js';
 import { executeTool } from '../tools/multiAgentToolRegistry.js';
+import { HiveMind } from '../memory/hiveMind.js';
+import { HitlManager } from '../hitl/hitlManager.js';
+import { HitlUrgency } from '../hitl/types.js';
+import { SwarmTracer } from '../telemetry/tracer.js';
+import { SpanKind, SpanStatus } from '../telemetry/types.js';
 
 // ─── Configuration ──────────────────────────────────────────────────────────
 
@@ -140,6 +145,20 @@ export class SelfHealingRunner {
         const prev1 = this.healingLog[this.healingLog.length - 1];
         const prev2 = this.healingLog[this.healingLog.length - 2];
         if (prev1.error === errorSummary || prev1.hypothesis === prev2.hypothesis) {
+          // --- Hive Mind: Query for past solutions BEFORE burning tokens on paradox ---
+          try {
+            const hiveMind = HiveMind.getInstance();
+            const pastSolutions = await hiveMind.queryForErrorResolution(errorSummary, toolName);
+            if (pastSolutions.length > 0 && pastSolutions[0].similarity > 0.6) {
+              const bestMatch = pastSolutions[0];
+              log(`Hive Mind found past solution (similarity: ${(bestMatch.similarity * 100).toFixed(1)}%): ${bestMatch.triplet.outcome.substring(0, 200)}`);
+              reasoningPrompt += `\n\n## HIVE MIND PAST SOLUTION (${(bestMatch.similarity * 100).toFixed(1)}% match):\nPrevious context: ${bestMatch.triplet.context.substring(0, 300)}\nPrevious action: ${bestMatch.triplet.action.substring(0, 300)}\nPrevious outcome: ${bestMatch.triplet.outcome.substring(0, 300)}`;
+              hiveMind.recordHit(bestMatch.triplet.id);
+            }
+          } catch (hiveErr: any) {
+            log(`Hive Mind query failed (non-critical): ${hiveErr.message}`);
+          }
+
           log(`Paradoxical loop detected. Engaging PARADOX tool for resolution synthesis...`);
           try {
             const paradoxResponse = await executeTool('PARADOX', {
@@ -199,6 +218,59 @@ export class SelfHealingRunner {
         log(`Self-healing succeeded on attempt ${attempt}!`);
         this.healingLog[this.healingLog.length - 1].fixed = true;
       }
+    }
+
+    // --- HITL Escalation: if all retries failed, escalate to human ---
+    if (this.healingLog.length >= this.config.maxRetries && this.isRecoverableError(lastResult.result)) {
+      try {
+        const hitlManager = HitlManager.getInstance();
+        const traceId = context.activeTraceContext?.traceId;
+        const errorSummary = this.extractErrorSummary(lastResult.result);
+        const healingContext = this.healingLog
+          .map(h => `Attempt ${h.attempt}: ${h.hypothesis.substring(0, 200)}`)
+          .join('\n');
+
+        process.stderr.write(`[SelfHeal] All ${this.config.maxRetries} retries exhausted. Escalating to HITL...\n`);
+
+        const humanAnswer = await hitlManager.requestHumanWithContext(
+          `Tool '${toolName}' has failed ${this.config.maxRetries} times despite autonomous repair attempts. Please provide guidance.`,
+          `Error: ${errorSummary}\n\nHealing attempts:\n${healingContext}`,
+          `SelfHealingRunner/${toolName}`,
+          HitlUrgency.HIGH,
+          traceId
+        );
+
+        // Write the human solution to Hive Mind as gold standard
+        try {
+          const hiveMind = HiveMind.getInstance();
+          await hiveMind.writeGoldStandard(
+            `Tool ${toolName} failed with: ${errorSummary}`,
+            humanAnswer,
+            'Human-provided solution via HITL escalation',
+            ['error-resolution', 'self-healing', 'hitl-escalation']
+          );
+        } catch { /* non-critical */ }
+
+        lastResult.result += `\n\n--- HITL Resolution ---\nHuman guidance: ${humanAnswer}`;
+      } catch (hitlErr: any) {
+        process.stderr.write(`[SelfHeal] HITL escalation failed: ${hitlErr.message}\n`);
+      }
+    }
+
+    // --- Hive Mind: Auto-document the outcome if healing succeeded ---
+    if (this.healingLog.length > 0 && this.healingLog.some(h => h.fixed)) {
+      try {
+        const hiveMind = HiveMind.getInstance();
+        const successfulAttempt = this.healingLog.find(h => h.fixed);
+        if (successfulAttempt) {
+          await hiveMind.write(
+            `Tool ${toolName} failed with: ${successfulAttempt.error}`,
+            successfulAttempt.hypothesis,
+            `Self-healed on attempt ${successfulAttempt.attempt}. Tool succeeded after applying fix.`,
+            { tags: ['error-resolution', 'self-healing', 'auto-documented'] }
+          );
+        }
+      } catch { /* non-critical */ }
     }
 
     // Append healing log to result if any attempts were made

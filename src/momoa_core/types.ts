@@ -18,6 +18,10 @@ import { TranscriptManager } from '../services/transcriptManager.js';
 import { UserSecrets } from '../shared/model.js';
 import { Overseer } from './overseer.js';
 import type { McpClientManager } from '../mcp/mcpClientManager.js';
+import type { HiveMind } from '../memory/hiveMind.js';
+import type { HitlManager } from '../hitl/hitlManager.js';
+import type { SwarmTracer } from '../telemetry/tracer.js';
+import type { TraceContext } from '../telemetry/types.js';
 
 export interface FileContent {
   path: string;
@@ -100,6 +104,10 @@ export interface MultiAgentToolContext {
   projectDeadlineMs?: number;
   gracePeriodMs?: number;
   mcpClientManager?: McpClientManager;
+  hiveMind?: HiveMind;
+  hitlManager?: HitlManager;
+  tracer?: SwarmTracer;
+  activeTraceContext?: TraceContext;
 }
 
 export interface FuzzyReplaceResult {

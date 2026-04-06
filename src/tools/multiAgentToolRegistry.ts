@@ -40,6 +40,13 @@ import { julesCreateSessionTool } from './implementations/julesCreateSessionTool
 import { julesMonitorSessionTool } from './implementations/julesMonitorSessionTool.js';
 import { julesAutoTriageTool } from './implementations/julesAutoTriageTool.js';
 import { memoryStatsTool } from './implementations/memoryStatsTool.js';
+import { hiveMindQueryTool } from './implementations/hiveMindQueryTool.js';
+import { hiveMindWriteTool } from './implementations/hiveMindWriteTool.js';
+import { askHumanTool } from './implementations/askHumanTool.js';
+import { respondToHumanTool } from './implementations/respondToHumanTool.js';
+import { hitlStatusTool } from './implementations/hitlStatusTool.js';
+import { searchRegistryTool } from './implementations/searchRegistryTool.js';
+import { telemetryDashboardTool } from './implementations/telemetryDashboardTool.js';
 
 // The state is a module-level constant, making it private to this module.
 const tools = new Map<string, MultiAgentTool>();
@@ -148,6 +155,15 @@ registerTool(julesCreateSessionTool);
 registerTool(julesMonitorSessionTool);
 registerTool(julesAutoTriageTool);
 registerTool(memoryStatsTool);
+
+// --- Phase 5: Four Pillars Tools ---
+registerTool(hiveMindQueryTool);
+registerTool(hiveMindWriteTool);
+registerTool(askHumanTool);
+registerTool(respondToHumanTool);
+registerTool(hitlStatusTool);
+registerTool(searchRegistryTool);
+registerTool(telemetryDashboardTool);
 
 // --- MCP Resource & Prompt Tools ---
 import { readMcpResourceTool } from './implementations/readMcpResourceTool.js';

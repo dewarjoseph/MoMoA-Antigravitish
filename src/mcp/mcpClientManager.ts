@@ -15,6 +15,10 @@ import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
+import { SwarmTracer } from '../telemetry/tracer.js';
+import { SpanKind, SpanStatus } from '../telemetry/types.js';
+import { measurePayload } from '../telemetry/tokenAccounting.js';
+import type { TraceContext } from '../telemetry/types.js';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -238,22 +242,63 @@ export class McpClientManager {
   async callTool(
     serverName: string,
     toolName: string,
-    args: Record<string, unknown>
+    args: Record<string, unknown>,
+    traceContext?: TraceContext
   ): Promise<string> {
     const conn = this.connections.get(serverName);
     if (!conn || !conn.connected) {
       throw new Error(`MCP server '${serverName}' is not connected.`);
     }
 
-    const result = await conn.client.callTool({
-      name: toolName,
-      arguments: args,
-    });
+    // --- Glass Swarm Telemetry: create child span ---
+    let span;
+    try {
+      const tracer = SwarmTracer.getInstance();
+      if (traceContext) {
+        span = tracer.startSpan(traceContext, `${serverName}/${toolName}`, SpanKind.MCP_CALL, {
+          'mcp.server': serverName,
+          'mcp.tool': toolName,
+        });
+        const requestTokens = measurePayload(args);
+        span.tokensSent = requestTokens;
+      }
+    } catch {
+      // Telemetry is non-critical; proceed without it
+    }
 
-    const typedContent = result.content as Array<{ type: string; text?: string }>;
-    return typedContent
-      .map(c => (c.type === 'text' ? c.text : '[Unsupported Artifact Content]'))
-      .join('\n');
+    try {
+      const result = await conn.client.callTool({
+        name: toolName,
+        arguments: args,
+      });
+
+      const typedContent = result.content as Array<{ type: string; text?: string }>;
+      const output = typedContent
+        .map(c => (c.type === 'text' ? c.text : '[Unsupported Artifact Content]'))
+        .join('\n');
+
+      // --- Glass Swarm Telemetry: end span ---
+      if (span) {
+        try {
+          const tracer = SwarmTracer.getInstance();
+          span.tokensReceived = measurePayload(output);
+          tracer.endSpan(span, SpanStatus.OK);
+        } catch { /* non-critical */ }
+      }
+
+      return output;
+    } catch (err) {
+      // --- Glass Swarm Telemetry: record error ---
+      if (span) {
+        try {
+          const tracer = SwarmTracer.getInstance();
+          tracer.endSpan(span, SpanStatus.ERROR, {
+            'error': String(err),
+          });
+        } catch { /* non-critical */ }
+      }
+      throw err;
+    }
   }
 
   /**
@@ -500,5 +545,58 @@ export class McpClientManager {
       this.watcher.close();
       this.watcher = null;
     }
+  }
+
+  // ─── Dynamic Hot-Plugging ──────────────────────────────────────────────
+
+  /**
+   * Hot-plug a new MCP server mid-session.
+   * Spawns the server, connects, discovers tools, and notifies the registry.
+   */
+  async hotPlugServer(name: string, config: McpServerConfig): Promise<string[]> {
+    // Disconnect if already connected
+    if (this.connections.has(name)) {
+      await this.disconnectServer(name);
+    }
+
+    process.stderr.write(`[MCP-Manager] Hot-plugging server '${name}'...\n`);
+    await this.connectServer(name, config);
+
+    const conn = this.connections.get(name);
+    if (!conn) {
+      throw new Error(`Failed to hot-plug server '${name}'`);
+    }
+
+    const toolNames = [...conn.tools.keys()];
+    process.stderr.write(`[MCP-Manager] Hot-plug complete: '${name}' with ${toolNames.length} tool(s)\n`);
+
+    // Notify the onToolsChanged callback if registered
+    if (this.onToolsChanged) {
+      this.onToolsChanged();
+    }
+
+    return toolNames;
+  }
+
+  /**
+   * Hot-unplug an MCP server mid-session.
+   * Gracefully disconnects and removes all tools from the pool.
+   */
+  async hotUnplugServer(name: string): Promise<void> {
+    process.stderr.write(`[MCP-Manager] Hot-unplugging server '${name}'...\n`);
+    await this.disconnectServer(name);
+
+    // Notify the onToolsChanged callback
+    if (this.onToolsChanged) {
+      this.onToolsChanged();
+    }
+  }
+
+  /**
+   * Check if a server is currently connected and healthy.
+   */
+  isServerConnected(name: string): boolean {
+    const conn = this.connections.get(name);
+    return conn?.connected ?? false;
   }
 }
