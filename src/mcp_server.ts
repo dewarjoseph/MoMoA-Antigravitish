@@ -12,6 +12,10 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { Console } from 'node:console';
+
+// Redirect global console completely to stderr, protecting MCP stdio transport JSON-RPC.
+global.console = new Console(process.stderr, process.stderr);
 
 // Import tool registry
 import { getToolNames, getTool, registerDynamicMcpTools } from './tools/multiAgentToolRegistry.js';
