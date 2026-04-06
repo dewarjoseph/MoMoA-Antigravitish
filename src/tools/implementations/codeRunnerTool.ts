@@ -104,7 +104,7 @@ export const CodeRunnerTool: MultiAgentTool = {
         }));
     };
 
-    const files = params['files'] as string[];
+    const files = (params['files'] as string[]) || [];
 
     // 1. Validation
     const explicitCommand = params['command'] as string | undefined;
