@@ -13,8 +13,8 @@ export const julesAutoTriageTool: MultiAgentTool = {
     let args;
     try {
       args = JSON.parse(params.jsonArgs);
-    } catch {
-      return { result: "Failed to parse arguments for JULES_AUTO_TRIAGE. Expected JSON string." };
+    } catch (e: any) {
+      return { result: `Failed to parse arguments for JULES_AUTO_TRIAGE. Expected JSON string but received: "${params.jsonArgs}". Error: ${e.message}` };
     }
 
     const sessionIdRaw = args.sessionId;
@@ -35,16 +35,16 @@ export const julesAutoTriageTool: MultiAgentTool = {
          if (!planActivity) return { result: "Failed to locate generated plan in recent activities." };
          
          const planStructure = JSON.stringify(planActivity.planGenerated.plan.steps, null, 2);
-         const prompt = `You are the MoMo Overseer. A Jules AI worker has proposed this plan:\n${planStructure}\nEvaluate if this plan is safe to execute on the repository without manual human review. Only reply with the exact text YES or NO.`;
+         const prompt = `You are the MoMo Overseer. A Jules AI worker has proposed this plan:\n${planStructure}\nEvaluate if this plan is safe to execute on the repository without manual human review. Reply with YES if perfectly safe. If not safe, reply with NO followed by a detailed explanation why.`;
          
          const evalResponse = await context.multiAgentGeminiClient.sendOneShotMessage(prompt, { model: DEFAULT_GEMINI_PRO_MODEL });
          
-         if (evalResponse?.text && evalResponse.text.trim().toUpperCase() === "YES") {
+         if (evalResponse?.text && evalResponse.text.trim().toUpperCase().startsWith("YES")) {
              context.sendMessage(`[Jules Triage] AI Safety Evaluation passed. Approving plan over REST via server-side bridging...`);
              await client.approvePlan(sessionId);
              return { result: `Triage Complete: Plan Approved automatically via AI supervision.` };
          } else {
-             return { result: `Triage Blocked: Plan did not pass AI automatic safety grading. Requires manual User Review.` };
+             return { result: `Triage Blocked: Plan did not pass AI automatic safety grading. AI Trace: ${evalResponse?.text || "[No Output Generated]"}` };
          }
       }
 

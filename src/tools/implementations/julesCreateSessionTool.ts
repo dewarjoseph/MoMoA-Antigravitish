@@ -12,8 +12,8 @@ export const julesCreateSessionTool: MultiAgentTool = {
     let args;
     try {
       args = JSON.parse(params.jsonArgs);
-    } catch {
-      return { result: "Failed to parse arguments for JULES_CREATE_SESSION. Expected JSON string." };
+    } catch (e: any) {
+      return { result: `Failed to parse arguments for JULES_CREATE_SESSION. Expected JSON string but received: "${params.jsonArgs}". Error: ${e.message}` };
     }
 
     const sourceContext = {
