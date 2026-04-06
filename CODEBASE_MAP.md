@@ -129,6 +129,7 @@ graph TB
 | **Tools** | `registerDynamicMcpTools()` | `src/tools/multiAgentToolRegistry.ts` | ~155 | Dynamic MCP tool registration |
 | **Tools** | `unregisterTool()` | `src/tools/multiAgentToolRegistry.ts` | ~147 | Hot-unplug support |
 | **Tools** | `DynamicMcpTool` | `src/tools/implementations/dynamicMcpTool.ts` | 17 | Pooled-connection MCP tool proxy |
+| **Tools** | `swarmDispatchTool` | `src/tools/implementations/swarmDispatchTool.ts` | 15 | Autonomous Swarm Orchestration |
 | **Tools** | `readMcpResourceTool` | `src/tools/implementations/readMcpResourceTool.ts` | 15 | MCP resource reader |
 | **Tools** | `getMcpPromptTool` | `src/tools/implementations/getMcpPromptTool.ts` | 15 | MCP prompt fetcher |
 | **Services** | `GeminiClient` | `src/services/geminiClient.ts` | 54 | Gemini API w/ policy |

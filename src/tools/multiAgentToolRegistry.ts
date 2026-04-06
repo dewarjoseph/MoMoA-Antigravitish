@@ -32,6 +32,7 @@ import { factFinderTool } from './implementations/FactFinderTool.js';
 import { OptimizerTool } from './implementations/optimizerTool.js';
 import { CodeRunnerTool } from './implementations/codeRunnerTool.js';
 import { researchLogTool } from './implementations/researchLogTool.js';
+import { swarmDispatchTool } from './implementations/swarmDispatchTool.js';
 
 // The state is a module-level constant, making it private to this module.
 const tools = new Map<string, MultiAgentTool>();
@@ -132,6 +133,7 @@ registerTool(factFinderTool);
 registerTool(OptimizerTool);
 registerTool(CodeRunnerTool);
 registerTool(researchLogTool);
+registerTool(swarmDispatchTool);
 
 // --- MCP Resource & Prompt Tools ---
 import { readMcpResourceTool } from './implementations/readMcpResourceTool.js';
