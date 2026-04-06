@@ -1,0 +1,117 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * MASTER TEST RUNNER — MCP Validation Suite
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Runs all test harnesses in sequence and reports overall results.
+ *
+ * Run: npx tsx src/tests/mcp_validation/run_all.ts
+ */
+
+import { spawn } from 'node:child_process';
+import * as path from 'node:path';
+import * as os from 'node:os';
+
+const isWin = os.platform() === 'win32';
+const tsxCmd = isWin ? 'npx.cmd' : 'npx';
+
+interface TestSuite {
+  name: string;
+  file: string;
+}
+
+const SUITES: TestSuite[] = [
+  { name: 'Test B: Self-Healing Retry Logic', file: 'test_self_healing_logic.ts' },
+  { name: 'Test C: MCP Resources & Prompts', file: 'test_mcp_resources.ts' },
+  { name: 'Test D: Bi-Directional MCP Host', file: 'test_agent_as_mcp.ts' },
+  { name: 'Test A: Dynamic MCP Hot-Plug', file: 'test_mcp_hotplug.ts' },
+  { name: 'E2E Crucible: Self-Healing Integration', file: 'test_e2e_crucible.ts' },
+];
+
+async function runSuite(suite: TestSuite): Promise<{ passed: boolean; output: string }> {
+  const suiteDir = path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1'));
+  const suitePath = path.join(suiteDir, suite.file);
+
+  return new Promise((resolve) => {
+    const child = spawn(tsxCmd, ['-y', 'tsx', suitePath], {
+      stdio: ['pipe', 'pipe', 'pipe'],
+      env: { ...process.env },
+      cwd: path.resolve(suiteDir, '..', '..', '..'),
+    });
+
+    let output = '';
+    child.stdout?.on('data', d => {
+      const text = d.toString();
+      output += text;
+      process.stdout.write(text);
+    });
+    child.stderr?.on('data', d => {
+      const text = d.toString();
+      output += text;
+      // Only forward non-noisy stderr
+      if (!text.includes('ExperimentalWarning') && !text.includes('--trace-warnings')) {
+        process.stderr.write(text);
+      }
+    });
+
+    const timer = setTimeout(() => {
+      child.kill('SIGTERM');
+      resolve({ passed: false, output: output + '\n[TIMEOUT after 120s]' });
+    }, 120000);
+
+    child.on('close', code => {
+      clearTimeout(timer);
+      resolve({ passed: code === 0, output });
+    });
+
+    child.on('error', err => {
+      clearTimeout(timer);
+      resolve({ passed: false, output: output + `\n[SPAWN ERROR: ${err.message}]` });
+    });
+  });
+}
+
+async function main(): Promise<void> {
+  console.log('\n' + '█'.repeat(60));
+  console.log('█                                                          █');
+  console.log('█   MoMo MCP Validation Suite — Phase 3 Proof of Work     █');
+  console.log('█                                                          █');
+  console.log('█'.repeat(60) + '\n');
+
+  const results: Array<{ name: string; passed: boolean }> = [];
+
+  for (const suite of SUITES) {
+    console.log('\n' + '▓'.repeat(60));
+    console.log(`▓  Running: ${suite.name}`);
+    console.log('▓'.repeat(60) + '\n');
+
+    const result = await runSuite(suite);
+    results.push({ name: suite.name, passed: result.passed });
+
+    console.log(`\n  ➤ ${result.passed ? '✅' : '❌'} ${suite.name}: ${result.passed ? 'PASSED' : 'FAILED'}`);
+  }
+
+  // Grand summary
+  const passed = results.filter(r => r.passed).length;
+  const total = results.length;
+
+  console.log('\n\n' + '█'.repeat(60));
+  console.log('█                                                          █');
+  console.log('█   GRAND SUMMARY                                          █');
+  console.log('█                                                          █');
+  console.log('█'.repeat(60) + '\n');
+
+  for (const r of results) {
+    console.log(`  ${r.passed ? '✅' : '❌'} ${r.name}`);
+  }
+
+  console.log(`\n  Total: ${passed}/${total} suites passed`);
+  console.log('\n' + '█'.repeat(60) + '\n');
+
+  if (passed < total) process.exit(1);
+}
+
+main().catch(err => {
+  console.error('Fatal runner error:', err);
+  process.exit(1);
+});

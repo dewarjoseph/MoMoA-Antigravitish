@@ -2,6 +2,9 @@
  * MCP Server for MoMo Overseer.
  * Exposes local tools from src/tools/implementations/ over stdio transport
  * for integration with Claude, Gemini CLI, and other MCP clients.
+ *
+ * Phase 2: Now supports dynamic MCP client connections via McpClientManager,
+ * resource/prompt endpoints, and bi-directional MCP hosting.
  */
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
@@ -11,7 +14,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 
 // Import tool registry
-import { getToolNames, getTool } from './tools/multiAgentToolRegistry.js';
+import { getToolNames, getTool, registerDynamicMcpTools } from './tools/multiAgentToolRegistry.js';
 import type { MultiAgentToolContext, MultiAgentToolResult } from './momoa_core/types.js';
 import { GeminiClient } from './services/geminiClient.js';
 import { ApiPolicyManager } from './services/apiPolicyManager.js';
@@ -19,13 +22,18 @@ import { TranscriptManager } from './services/transcriptManager.js';
 import { ConcreteInfrastructureContext } from './services/infrastructure.js';
 import type { UserSecrets } from './shared/model.js';
 import { scanLocalDirectory } from './utils/localScanner.js';
+import { McpClientManager } from './mcp/mcpClientManager.js';
+import { DynamicMcpTool } from './tools/implementations/dynamicMcpTool.js';
 
 /**
  * Build a MultiAgentToolContext for local MCP operation.
  * This provides the minimum viable context for tool execution
  * without requiring the full orchestrator stack.
  */
-async function buildLocalContext(projectDir: string): Promise<MultiAgentToolContext> {
+async function buildLocalContext(
+  projectDir: string,
+  mcpManager?: McpClientManager
+): Promise<MultiAgentToolContext> {
   const secrets: UserSecrets = {
     geminiApiKey: process.env.GEMINI_API_KEY ?? '',
     julesApiKey: process.env.JULES_API_KEY ?? '',
@@ -59,7 +67,6 @@ async function buildLocalContext(projectDir: string): Promise<MultiAgentToolCont
     originalBinaryFileMap: new Map<string, string>(binaryFileMap),
     sendMessage: (msg: string) => {
       // In headless mode, log to stderr so it doesn't interfere with MCP stdio
-      // process.stderr.write(`[MCP-TOOL] ${msg}\n`);
       try {
         const parsed = JSON.parse(msg);
         if (parsed.status === 'APPLY_FILE_CHANGE' && parsed.data?.filename && parsed.data?.content !== undefined) {
@@ -86,19 +93,42 @@ async function buildLocalContext(projectDir: string): Promise<MultiAgentToolCont
     infrastructureContext: infraContext,
     saveFiles: true,
     secrets,
+    mcpClientManager: mcpManager,
   };
 }
 
 /**
  * Create and configure the MCP server with all available tools.
+ * Now supports dynamic MCP client initialization via mcpConfigPath.
  */
-export async function createMcpServer(projectDir: string): Promise<McpServer> {
+export async function createMcpServer(
+  projectDir: string,
+  mcpConfigPath?: string
+): Promise<McpServer> {
   const server = new McpServer({
     name: 'momo-overseer',
-    version: '1.0.0',
+    version: '2.0.0',
   });
 
-  const context = await buildLocalContext(projectDir);
+  // --- Dynamic MCP Client Manager ---
+  let mcpManager: McpClientManager | undefined;
+  const resolvedConfigPath = mcpConfigPath || path.join(projectDir, 'mcp_servers.json');
+
+  try {
+    mcpManager = new McpClientManager(resolvedConfigPath);
+
+    // Wire hot-reload: when tools change, re-register them
+    mcpManager.setOnToolsChanged(async () => {
+      registerDynamicMcpTools(mcpManager!);
+      process.stderr.write(`[MoMo-MCP] Dynamic tool landscape updated. Total tools: ${getToolNames().length}\n`);
+    });
+
+    await mcpManager.initFromConfig();
+  } catch (err) {
+    process.stderr.write(`[MoMo-MCP] Dynamic MCP init error (non-fatal): ${err}\n`);
+  }
+
+  const context = await buildLocalContext(projectDir, mcpManager);
 
   const toolNames = getToolNames();
   const legacyNlpTools = new Set(['PHONEAFRIEND', 'PARADOX', 'RESTART_PROJECT{', 'UPDATE_RESEARCH_LOG', 'FACTFINDER']);
@@ -119,6 +149,7 @@ export async function createMcpServer(projectDir: string): Promise<McpServer> {
       params: z.string().describe('JSON-encoded parameters for the tool'),
     };
 
+    // --- Native Tool Schemas ---
     if (mcpToolName === 'DOC_READ') {
         toolSchema = { filename: z.string().describe("Target file path to read") };
     } else if (mcpToolName === 'DOC_EDIT') {
@@ -149,11 +180,20 @@ export async function createMcpServer(projectDir: string): Promise<McpServer> {
             trials: z.number().optional().describe("Number of repititions per parameter set"),
             dependencies: z.string().optional().describe("JSON stringified array of required pip modules or files")
         };
-    } else if (mcpToolName === 'STITCH_MCP' || mcpToolName === 'BROWSER_MCP' || mcpToolName === 'SUPER_QUANT_SEQUENTIAL') {
+    } else if (mcpToolName === 'READ_MCP_RESOURCE') {
         toolSchema = {
-            tool_name: z.string().describe("The name of the external MCP tool to execute."),
-            args: z.record(z.string(), z.any()).optional().describe("Arguments bridging down to the downstream Google Labs / External MCP Server.")
+            server: z.string().optional().describe("MCP server name to read resource from. Omit to list all resources."),
+            uri: z.string().optional().describe("Resource URI to read."),
         };
+    } else if (mcpToolName === 'GET_MCP_PROMPT') {
+        toolSchema = {
+            server: z.string().optional().describe("MCP server name to get prompt from. Omit to list all prompts."),
+            prompt_name: z.string().optional().describe("Name of the prompt to retrieve."),
+            args: z.record(z.string(), z.string()).optional().describe("Arguments to pass to the prompt template."),
+        };
+    } else if (tool instanceof DynamicMcpTool) {
+        // Dynamic MCP tools: build schema from discovered inputSchema
+        toolSchema = buildZodSchemaFromJson(tool.getInputSchema());
     }
 
     server.tool(
@@ -184,7 +224,7 @@ export async function createMcpServer(projectDir: string): Promise<McpServer> {
     );
   }
 
-  // Add a special "list_tools" resource for discoverability
+  // --- Discoverability Tool ---
   server.tool(
     'list_available_tools',
     'List all tools registered in the MoMo Overseer',
@@ -201,14 +241,88 @@ export async function createMcpServer(projectDir: string): Promise<McpServer> {
     }
   );
 
+  // --- Resource Endpoints (Directive 3 & 4) ---
+  // Expose project files as MCP resources for external agents
+  server.resource(
+    'project-files',
+    'file://project/files',
+    async (uri) => {
+      const fileList = [...context.fileMap.keys()].join('\n');
+      return {
+        contents: [{
+          uri: uri.href,
+          text: `# Project Files\n\n${fileList}`,
+          mimeType: 'text/plain',
+        }],
+      };
+    }
+  );
+
   return server;
+}
+
+/**
+ * Build a Zod schema from a JSON Schema object (basic conversion for MCP tool registration).
+ * Handles common types: string, number, integer, boolean, array, object.
+ */
+function buildZodSchemaFromJson(
+  jsonSchema: Record<string, unknown>
+): Record<string, z.ZodTypeAny> {
+  const properties = (jsonSchema.properties as Record<string, any>) || {};
+  const required = new Set((jsonSchema.required as string[]) || []);
+  const zodSchema: Record<string, z.ZodTypeAny> = {};
+
+  for (const [key, prop] of Object.entries(properties)) {
+    let zodType: z.ZodTypeAny;
+
+    switch (prop.type) {
+      case 'string':
+        zodType = z.string();
+        break;
+      case 'number':
+      case 'integer':
+        zodType = z.number();
+        break;
+      case 'boolean':
+        zodType = z.boolean();
+        break;
+      case 'array':
+        zodType = z.array(z.any());
+        break;
+      case 'object':
+        zodType = z.record(z.string(), z.any());
+        break;
+      default:
+        zodType = z.any();
+    }
+
+    if (prop.description) {
+      zodType = zodType.describe(prop.description);
+    }
+
+    if (!required.has(key)) {
+      zodType = zodType.optional();
+    }
+
+    zodSchema[key] = zodType;
+  }
+
+  // Fallback: if no properties were extracted, use a generic params field
+  if (Object.keys(zodSchema).length === 0) {
+    zodSchema['params'] = z.string().optional().describe('JSON-encoded parameters');
+  }
+
+  return zodSchema;
 }
 
 /**
  * Start the MCP server on stdio transport.
  */
-export async function startMcpServer(projectDir: string): Promise<void> {
-  const server = await createMcpServer(projectDir);
+export async function startMcpServer(
+  projectDir: string,
+  mcpConfigPath?: string
+): Promise<void> {
+  const server = await createMcpServer(projectDir, mcpConfigPath);
   const transport = new StdioServerTransport();
 
   process.stderr.write('[MoMo-MCP] Starting MCP server on stdio...\n');

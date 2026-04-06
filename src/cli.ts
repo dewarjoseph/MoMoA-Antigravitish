@@ -48,10 +48,21 @@ program
   .command('daemon')
   .description('Start the MCP server on stdio transport')
   .option('-d, --dir <path>', 'Target project directory', process.env.MOMO_WORKING_DIR || process.cwd())
+  .option('--mcp-config <path>', 'Path to mcp_servers.json for dynamic MCP server discovery')
+  .option('--no-self-healing', 'Disable the autonomous self-healing execution loop')
   .action(async (opts) => {
     const projectDir = path.resolve(opts.dir);
+    const mcpConfigPath = opts.mcpConfig ? path.resolve(opts.mcpConfig) : undefined;
+    
+    if (opts.selfHealing === false) {
+      process.env.MOMO_DISABLE_SELF_HEALING = 'true';
+    }
+
     console.error(`[MoMo] Starting daemon for project: ${projectDir}`);
-    await startMcpServer(projectDir);
+    if (mcpConfigPath) {
+      console.error(`[MoMo] Dynamic MCP config: ${mcpConfigPath}`);
+    }
+    await startMcpServer(projectDir, mcpConfigPath);
   });
 
 // --- swarm commands ---

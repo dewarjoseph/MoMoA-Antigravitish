@@ -42,6 +42,7 @@ import { generateSessionTitle } from '../utils/sessionTitleGenerator.js';
 import { withDeadline } from '../utils/timeoutHelper.js';
 import { CleanFormattedDateTime } from '../utils/dateTimeStrings.js';
 import { checkContainerMemory } from '../utils/memoryChecker.js';
+import { SelfHealingRunner } from '../mcp/selfHealingRunner.js';
 
 const EXISTING_FILES_ID = "EXISTING_FILES_ID";
 const EXISTING_FAQ_ID = "EXISTING_FAQ_ID";
@@ -81,6 +82,7 @@ export class Orchestrator {
   private maxDurationMs?: number;
   private gracePeriodMs?: number;
   private hasWarnedTimeLow: boolean = false;
+  private selfHealingRunner: SelfHealingRunner;
 
   /**
    * Initializes a new instance of the Orchestrator.
@@ -138,6 +140,10 @@ export class Orchestrator {
     this.maxTurns = 20;
     this.signal = signal;
     this.saveFiles = saveFiles;
+    this.selfHealingRunner = new SelfHealingRunner({
+      enabled: process.env.MOMO_DISABLE_SELF_HEALING !== 'true',
+      mcpManager: null, // Will be set if McpClientManager is available
+    });
 
     this.signal?.addEventListener('abort', () => {
       this.updateLog('Orchestrator received abort signal from user.');
@@ -758,8 +764,15 @@ ${retrospectiveObject.other_pertinent_notes || '--None--'}`.trim();
           await this.updateProgressLog(`\n### '${tool?.displayName}' Invoked`);
 
           try {
+            // Use self-healing runner for eligible tools (RUN, OPTIMIZE)
+            const toolExecution = this.selfHealingRunner.executeWithHealing(
+              toolRequest.toolName!,
+              toolRequest.params!,
+              this.toolContext,
+              (msg) => this.updateProgressLog(`\n#### Self-Healing\n${msg}`)
+            );
             const toolResult = await withDeadline(
-              executeTool(toolRequest.toolName, toolRequest.params, this.toolContext),
+              toolExecution,
               this.toolContext.projectDeadlineMs!,
               this.signal
             );

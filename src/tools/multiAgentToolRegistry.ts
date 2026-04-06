@@ -133,18 +133,52 @@ registerTool(OptimizerTool);
 registerTool(CodeRunnerTool);
 registerTool(researchLogTool);
 
-// --- Dynamic Proxy MCP Implementations ---
-import { ProxyMcpTool } from './implementations/proxyMcpTool.js';
+// --- MCP Resource & Prompt Tools ---
+import { readMcpResourceTool } from './implementations/readMcpResourceTool.js';
+import { getMcpPromptTool } from './implementations/getMcpPromptTool.js';
+registerTool(readMcpResourceTool);
+registerTool(getMcpPromptTool);
 
-if (process.env.ENABLE_STITCH_MCP === 'true') {
-    registerTool(new ProxyMcpTool('STITCH_MCP', 'npx', ['-y', '@modelcontextprotocol/server-stitch']));
+// --- Dynamic MCP Tool Registration ---
+import { DynamicMcpTool } from './implementations/dynamicMcpTool.js';
+import type { McpClientManager } from '../mcp/mcpClientManager.js';
+
+/**
+ * Unregisters a tool by name. Used for hot-unplug when MCP servers disconnect.
+ */
+export function unregisterTool(toolName: string): boolean {
+  return tools.delete(toolName);
 }
 
-if (process.env.ENABLE_BROWSER_MCP === 'true') {
-    registerTool(new ProxyMcpTool('BROWSER_MCP', 'npx', ['-y', '@modelcontextprotocol/server-puppeteer']));
-}
+/**
+ * Registers all tools discovered from connected MCP servers via the McpClientManager.
+ * Clears any previously registered dynamic MCP tools first to handle hot-reload cleanly.
+ */
+export function registerDynamicMcpTools(manager: McpClientManager): number {
+  // Remove any existing dynamic MCP tools (those containing '__' separator)
+  const toRemove: string[] = [];
+  for (const name of tools.keys()) {
+    if (name.includes('__')) {
+      toRemove.push(name);
+    }
+  }
+  for (const name of toRemove) {
+    tools.delete(name);
+  }
 
-if (process.env.ENABLE_SUPER_QUANT_SEQUENTIAL === 'true') {
-    registerTool(new ProxyMcpTool('SUPER_QUANT_SEQUENTIAL', 'npx', ['-y', '@modelcontextprotocol/server-sequential-thinking']));
+  // Register fresh tools from all connected servers
+  const allTools = manager.getAllTools();
+  let count = 0;
+
+  for (const [_qualifiedName, { serverName, tool: remoteTool }] of allTools) {
+    const dynamicTool = new DynamicMcpTool(serverName, remoteTool, manager);
+    registerTool(dynamicTool);
+    count++;
+  }
+
+  if (count > 0) {
+    process.stderr.write(`[MCP-Registry] Registered ${count} dynamic MCP tool(s).\n`);
+  }
+
+  return count;
 }
-// Future tools will be registered here.

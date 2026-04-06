@@ -50,10 +50,10 @@ export interface ConfigParameters {
   maxTurns?: number; // Added maxTurns
   assumptions?: string; // Added assumptions
   
-  // External MCP Bridges
-  enableStitchMcp?: boolean;
-  enableBrowserMcp?: boolean;
-  enableSuperQuantSequential?: boolean;
+  // Dynamic MCP Configuration
+  mcpServersConfigPath?: string;
+  enableSelfHealing?: boolean;
+  maxSelfHealRetries?: number;
 }
 
 export class Config implements InfrastructureContext {
@@ -64,10 +64,10 @@ export class Config implements InfrastructureContext {
   private readonly question: string | undefined;
   private readonly fullContext: boolean;
   
-  // External MCP configurations
-  public readonly enableStitchMcp: boolean;
-  public readonly enableBrowserMcp: boolean;
-  public readonly enableSuperQuantSequential: boolean;
+  // Dynamic MCP configuration
+  public readonly mcpServersConfigPath?: string;
+  public readonly enableSelfHealing: boolean;
+  public readonly maxSelfHealRetries: number;
   private readonly coreTools: string[] | undefined;
   private readonly excludeTools: string[] | undefined;
   private geminiClient!: GeminiClient;
@@ -89,9 +89,9 @@ export class Config implements InfrastructureContext {
     this.model = params.model;
     this.maxTurns = params.maxTurns; // Initialize maxTurns from params
     this.assumptions = params.assumptions; // Initialize assumptions from params
-    this.enableStitchMcp = params.enableStitchMcp ?? process.env.ENABLE_STITCH_MCP === 'true';
-    this.enableBrowserMcp = params.enableBrowserMcp ?? process.env.ENABLE_BROWSER_MCP === 'true';
-    this.enableSuperQuantSequential = params.enableSuperQuantSequential ?? process.env.ENABLE_SUPER_QUANT_SEQUENTIAL === 'true';
+    this.mcpServersConfigPath = params.mcpServersConfigPath;
+    this.enableSelfHealing = params.enableSelfHealing ?? process.env.MOMO_DISABLE_SELF_HEALING !== 'true';
+    this.maxSelfHealRetries = params.maxSelfHealRetries ?? parseInt(process.env.MOMO_MAX_SELF_HEAL_RETRIES || '5', 10);
   }
 
   async refreshAuth(authMethod: AuthType, options?: Record<string, string>) {

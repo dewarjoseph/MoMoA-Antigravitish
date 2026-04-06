@@ -17,6 +17,7 @@ import { GeminiClient } from '../services/geminiClient.js';
 import { TranscriptManager } from '../services/transcriptManager.js';
 import { UserSecrets } from '../shared/model.js';
 import { Overseer } from './overseer.js';
+import type { McpClientManager } from '../mcp/mcpClientManager.js';
 
 export interface FileContent {
   path: string;
@@ -98,6 +99,7 @@ export interface MultiAgentToolContext {
   signal?: AbortSignal;
   projectDeadlineMs?: number;
   gracePeriodMs?: number;
+  mcpClientManager?: McpClientManager;
 }
 
 export interface FuzzyReplaceResult {
