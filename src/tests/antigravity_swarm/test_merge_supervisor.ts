@@ -24,7 +24,7 @@ async function run() {
     return { text: JSON.stringify({ approved: true, reasoning: "LGTM" }) } as any;
   };
 
-  const supervisor = new MergeSupervisor(gemini);
+  const supervisor = new MergeSupervisor(gemini, {} as any);
   
   // Also mock runGitCommand so we don't accidentally merge in my test
   (supervisor as any).runGitCommand = async (args: string[], cwd: string): Promise<string> => {

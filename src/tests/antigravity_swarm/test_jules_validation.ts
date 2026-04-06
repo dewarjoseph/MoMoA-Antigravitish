@@ -168,7 +168,7 @@ async function runTests(): Promise<void> {
   // ── Phase 2: SwarmManager Dispatch Logic ──────────────────────────────
   console.log('\n── Phase 2: SwarmManager Configuration ──');
 
-  const manager = new SwarmManager(store);
+  const manager = new SwarmManager(store, {} as any);
 
   // Test prompt generation (without actually spawning jules)
   const batchPath = path.join(tempDir, 'todo.md');

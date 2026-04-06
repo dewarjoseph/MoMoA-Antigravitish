@@ -42,7 +42,7 @@ export const superviseMergeTool: MultiAgentTool = {
       }));
 
       const { MergeSupervisor } = await import('../../swarm/merge_supervisor.js');
-      const supervisor = new MergeSupervisor(geminiClient);
+      const supervisor = new MergeSupervisor(geminiClient, context);
       const result = await supervisor.evaluateAndMerge(
          args.branch, 
          sessionId, 

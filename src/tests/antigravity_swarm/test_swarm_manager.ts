@@ -8,7 +8,7 @@ async function run() {
   // Point the store locally to MoMoA-TestBed's .swarm dir
   const targetDir = "c:\\\\Users\\\\Joe\\\\source\\\\MoMoA-TestBed";
   const store = new LocalStore(path.join(targetDir, ".swarm"));
-  const manager = new SwarmManager(store);
+  const manager = new SwarmManager(store, {} as any);
 
   console.log("Mocking Jules to return valid Session output...");
   (manager as any).spawnJulesWorker = async (prompt: string, repo: string, branch?: string) => {

@@ -46,7 +46,7 @@ export class SessionPoller {
     this.store = opts.store;
     this.geminiClient = opts.geminiClient;
     if (this.geminiClient) {
-      this.mergeSupervisor = new MergeSupervisor(this.geminiClient);
+      this.mergeSupervisor = new MergeSupervisor(this.geminiClient, {} as any);
     }
   }
 

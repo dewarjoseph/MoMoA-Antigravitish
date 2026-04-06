@@ -44,7 +44,7 @@ export const swarmDispatchTool: MultiAgentTool = {
     const targetDir = process.env.MOMO_WORKING_DIR || process.cwd();
 
     const store = new LocalStore(path.join(targetDir, '.swarm'));
-    const manager = new SwarmManager(store);
+    const manager = new SwarmManager(store, context);
 
     let promptDir = dispatchArgs.promptDir;
 

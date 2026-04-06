@@ -92,7 +92,7 @@ swarm
   .option('-p, --prompt-dir <dir>', 'Directory containing prompt .md files')
   .option('-s, --strategies <list>', 'Comma-separated strategy list', (val: string) => val.split(','))
   .action(async (opts) => {
-    const manager = new SwarmManager(store);
+    const manager = new SwarmManager(store, {} as any);
     const dispatched = await manager.dispatch({
       count: opts.count,
       targetDir: path.resolve(opts.targetDir),
@@ -192,7 +192,7 @@ swarm
   .requiredOption('-c, --count <n>', 'Number of variants per group', parseInt)
   .requiredOption('-g, --groups <json>', 'JSON array of {name, basePrompt} objects')
   .action((opts) => {
-    const manager = new SwarmManager(store);
+    const manager = new SwarmManager(store, {} as any);
     const groups = JSON.parse(opts.groups).map((g: any) => ({
       ...g,
       count: opts.count,
