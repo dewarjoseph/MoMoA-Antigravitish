@@ -1,0 +1,54 @@
+﻿commit 9c6b033784a8a210765fdb073ca2a3378e0a150f
+Author: Reto Meier <15709773+retomeier@users.noreply.github.com>
+Date:   Tue Mar 10 14:07:44 2026 -0700
+
+    Fixed notices on two files.
+
+diff --git a/src/tools/implementations/researchLogTool.ts b/src/tools/implementations/researchLogTool.ts
+index 73339a7..c676b60 100644
+--- a/src/tools/implementations/researchLogTool.ts
++++ b/src/tools/implementations/researchLogTool.ts
+@@ -1,3 +1,19 @@
++/**
++ * Copyright 2026 Reto Meier
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ * http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
+ import { logFilename } from "../../config/config";
+ import { MultiAgentToolContext, MultiAgentToolResult, ToolParsingResult } from "../../momoa_core/types";
+ import { MultiAgentTool } from "../multiAgentTool";
+diff --git a/src/utils/memoryChecker.ts b/src/utils/memoryChecker.ts
+index 45fedd0..78e8d3e 100644
+--- a/src/utils/memoryChecker.ts
++++ b/src/utils/memoryChecker.ts
+@@ -1,3 +1,19 @@
++/**
++ * Copyright 2026 Reto Meier
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ * http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
+ import * as os from 'os';
+ 
+ export function checkContainerMemory(): string {

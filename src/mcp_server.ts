@@ -152,7 +152,7 @@ export async function createMcpServer(
   const context = await buildLocalContext(projectDir, mcpManager);
 
   const toolNames = getToolNames();
-  const legacyNlpTools = new Set(['PHONEAFRIEND', 'PARADOX', 'RESTART_PROJECT{', 'UPDATE_RESEARCH_LOG', 'FACTFINDER']);
+  const legacyNlpTools = new Set(['PHONEAFRIEND', 'PARADOX', 'RESTART_PROJECT{', 'FACTFINDER']);
 
   for (const toolName of toolNames) {
     if (legacyNlpTools.has(toolName)) continue;
@@ -227,6 +227,12 @@ export async function createMcpServer(
     } else if (mcpToolName === 'JULES_AUTO_TRIAGE') {
         toolSchema = {
             sessionId: z.string().describe("The session ID waiting for approval/triage."),
+        };
+    } else if (mcpToolName === 'GET_MEMORY_STATS') {
+        toolSchema = {}; // No params needed, purely an internal invocation
+    } else if (mcpToolName === 'UPDATE_RESEARCH_LOG') {
+        toolSchema = {
+            entry: z.string().describe("The research log text to boldly append to RESEARCH_LOG.md"),
         };
     } else if (tool instanceof DynamicMcpTool) {
         // Dynamic MCP tools: build schema from discovered inputSchema

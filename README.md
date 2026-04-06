@@ -4,6 +4,8 @@
 
 Originally branched from the UI-bound Firebase prototype [MoMoA-Researcher](https://github.com/retomeier/MoMoA-Researcher), this repository has been thoroughly sanitized of all frontend bloat (React, Firebase, WebSockets, Express) to operate natively as a pure terminal pipeline inside your isolated development environment.
 
+*Disclaimer: This project is managed by the MoMo Overseer daemon asynchronously over MCP protocols.*
+
 ## Architecture
 
 The system executes AI work phases strictly in an unattended `[Headless Mode]` using a `.swarm/` local disk manifest.
