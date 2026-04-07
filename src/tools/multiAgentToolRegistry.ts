@@ -47,6 +47,10 @@ import { respondToHumanTool } from './implementations/respondToHumanTool.js';
 import { hitlStatusTool } from './implementations/hitlStatusTool.js';
 import { searchRegistryTool } from './implementations/searchRegistryTool.js';
 import { telemetryDashboardTool } from './implementations/telemetryDashboardTool.js';
+import { autoToolGeneratorTool } from './implementations/autoToolGeneratorTool.js';
+import { promptEvolutionTool } from './implementations/promptEvolutionTool.js';
+import { EvolutionSynthesizerTool } from './implementations/evolutionSynthesizerTool.js';
+import * as ts from 'typescript';
 
 // The state is a module-level constant, making it private to this module.
 const tools = new Map<string, MultiAgentTool>();
@@ -61,6 +65,30 @@ function registerTool(tool: MultiAgentTool): void {
     console.warn(`Tool "${tool.name}" is already registered. Overwriting.`);
   }
   tools.set(tool.name, tool);
+}
+
+/**
+ * Registers a tool dynamically by transpiling TypeScript code to JS, encoding as an ESM Data URI,
+ * and loading it without accessing the filesystem or cache.
+ * Returns the loaded MultiAgentTool schema to gracefully resume.
+ */
+export async function generateAndLoadTool(tsCode: string): Promise<MultiAgentTool> {
+  const jsCode = ts.transpileModule(tsCode, {
+    compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 }
+  }).outputText;
+  
+  const encodedJs = Buffer.from(jsCode).toString('base64');
+  const dataUri = `data:text/javascript;base64,${encodedJs}`;
+  
+  const dynamicModule = await import(dataUri);
+  const newTool: MultiAgentTool = dynamicModule.default || dynamicModule.tool || Object.values(dynamicModule)[0];
+  
+  if (!newTool || !newTool.name || !newTool.execute) {
+    throw new Error("Generated code does not export a valid MultiAgentTool schema.");
+  }
+  
+  registerTool(newTool);
+  return newTool;
 }
 
 /**
@@ -164,6 +192,8 @@ registerTool(respondToHumanTool);
 registerTool(hitlStatusTool);
 registerTool(searchRegistryTool);
 registerTool(telemetryDashboardTool);
+registerTool(autoToolGeneratorTool);
+registerTool(promptEvolutionTool);
 
 // --- MCP Resource & Prompt Tools ---
 import { readMcpResourceTool } from './implementations/readMcpResourceTool.js';

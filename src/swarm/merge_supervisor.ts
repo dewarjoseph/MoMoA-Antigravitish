@@ -131,6 +131,100 @@ Provide your response strictly in JSON format matching this schema:
     }
   }
 
+  public async competitivelyEvaluateAndMerge(
+    taskId: string,
+    branches: string[],
+    repoRoot: string,
+    taskTitle: string
+  ): Promise<SupervisionResult & { winningBranch: string | null }> {
+    try {
+      let baseBranch = "main";
+      try {
+        await this.runMcpCommand(`git rev-parse --verify main`, repoRoot);
+      } catch {
+        baseBranch = "master";
+      }
+
+      // Gather all diffs
+      const branchDiffs: Record<string, string> = {};
+      for (const branch of branches) {
+         try {
+             const diffStr = await this.runMcpCommand(`git diff ${baseBranch}...${branch}`, repoRoot);
+             if (diffStr && diffStr.trim() !== "" && diffStr.length < 500000) {
+                 branchDiffs[branch] = diffStr;
+             }
+         } catch (e) {
+             console.log(`[MergeSupervisor] Could not extract diff for ${branch}, skipping.`);
+         }
+      }
+
+      if (Object.keys(branchDiffs).length === 0) {
+          return { approved: false, reasoning: "No valid diffs could be generated across variants.", winningBranch: null };
+      }
+
+      const { preamble } = await getExpertPrompt("overseer");
+      let multiDiffPrompt = `${preamble}\n\n**Task Objective/Title**:\n${taskTitle}\n\n**Competitive Diffs**:\n`;
+      for (const [branch, diff] of Object.entries(branchDiffs)) {
+          multiDiffPrompt += `\n--- Branch: ${branch} ---\n\`\`\`diff\n${diff}\n\`\`\`\n`;
+      }
+      multiDiffPrompt += `
+Evaluate which of these diffs is structurally and practically superior.
+Respond strictly in JSON format matching this schema:
+{
+  "approved": boolean,
+  "winning_branch_name": "string" | null,
+  "reasoning": "string"
+}`;
+
+      const responseText = (await this.geminiClient.sendOneShotMessage(multiDiffPrompt, {
+        model: DEFAULT_GEMINI_PRO_MODEL,
+      }))?.text;
+
+      let decision = { approved: false, winning_branch_name: null as string | null, reasoning: "AI failed to parse." };
+      if (responseText) {
+        try {
+          const cleanResponse = removeBacktickFences(responseText);
+          decision = JSON.parse(cleanResponse);
+        } catch (err) {
+          console.error(`[MergeSupervisor] Failed to parse AI JSON response: ${err}`);
+        }
+      }
+
+      if (decision.approved && decision.winning_branch_name && branchDiffs[decision.winning_branch_name]) {
+         const winner = decision.winning_branch_name;
+         console.log(`[MergeSupervisor] Competitive merge winner: ${winner}. Initiating merge...`);
+         await this.runMcpCommand(`git checkout ${baseBranch}`, repoRoot);
+         await this.runMcpCommand(`git merge ${winner} --no-edit`, repoRoot);
+         
+         try {
+           const hiveMind = HiveMind.getInstance();
+           await hiveMind.write(
+             `Competitive Merge Winner: ${taskId} (branch: ${winner})`,
+             `AI selected ${winner} over siblings.`,
+             `Reasoning: ${decision.reasoning}`,
+             { tags: ['merge-winner', 'intelligence-loop', 'swarm-result'] }
+           );
+         } catch {}
+
+         // Delete losers
+         for (const branch of branches) {
+             if (branch !== winner) {
+                 try { await this.runMcpCommand(`git branch -D ${branch}`, repoRoot); } catch {}
+             }
+         }
+
+         return { approved: true, winningBranch: winner, reasoning: decision.reasoning };
+      } else {
+         console.log(`[MergeSupervisor] All variants rejected. Reasoning: ${decision.reasoning}`);
+         return { approved: false, winningBranch: null, reasoning: decision.reasoning };
+      }
+
+    } catch (e) {
+      const errorMsg = e instanceof Error ? e.message : String(e);
+      return { approved: false, winningBranch: null, reasoning: `System error during evaluation: ${errorMsg}` };
+    }
+  }
+
   private async runMcpCommand(command: string, cwd: string): Promise<string> {
     const originalDir = process.cwd();
     process.chdir(cwd);

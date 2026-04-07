@@ -264,6 +264,54 @@ export async function replaceRuntimePlaceholders(prompt: string, replacements: R
 }
 
 /**
+ * Retrieves the raw physical markdown of a prompt directly from the disk.
+ * @param promptId The relative ID of the prompt (e.g., 'strings/welcome-message-prompt').
+ */
+export async function getRawPromptFile(promptId: string): Promise<string> {
+  await ready;
+  if (!rawPrompts.has(promptId)) {
+    throw new Error(`Prompt ID '${promptId}' does not exist.`);
+  }
+  const fullPath = path.join(PROMPTS_BASE_PATH, `${promptId}.md`);
+  return fs.readFile(fullPath, 'utf-8');
+}
+
+/**
+ * Evolves a prompt at runtime by rewriting the markdown file and hot-swapping
+ * the prompt's representation in the internal memory maps (both raw and resolved).
+ * This forces an immediate re-resolution of all internal dependencies.
+ *
+ * @param promptId The relative ID of the prompt (e.g., 'strings/welcome-message-prompt').
+ * @param newMarkdownContent The fully formatted markdown string (including internal gray-matter frontmatter).
+ */
+export async function evolvePrompt(promptId: string, newMarkdownContent: string): Promise<void> {
+  await ready;
+  
+  if (!rawPrompts.has(promptId)) {
+    throw new Error(`Cannot evolve prompt. Prompt ID '${promptId}' does not exist.`);
+  }
+
+  const fullPath = path.join(PROMPTS_BASE_PATH, `${promptId}.md`);
+  await fs.writeFile(fullPath, newMarkdownContent, 'utf-8');
+
+  const { content, data } = matter(newMarkdownContent);
+  const newPromptObj = { content, metadata: data as PromptMetadata };
+
+  rawPrompts.set(promptId, newPromptObj);
+
+  try {
+    // Re-resolve all prompts to cascade the updated dependency
+    for (const [key, prompt] of rawPrompts.entries()) {
+      const resolvedContent = resolvePlaceholders(prompt.content, new Set([key]));
+      resolvedPrompts.set(key, { ...prompt, content: resolvedContent });
+    }
+  } catch (error) {
+    console.error(`Error cascading placeholders during evolution for '${promptId}':`, error);
+    throw error;
+  }
+}
+
+/**
  * FOR TESTING PURPOSES ONLY.
  * Provides access to internal state and reset functionality for test isolation.
  * @internal

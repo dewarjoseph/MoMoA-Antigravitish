@@ -208,6 +208,56 @@ Strategy-specific instructions will be injected from the prompt directory if ava
     return taskIndex;
   }
 
+  /**
+   * Run an Intelligence Loop experiment by dynamically spawning multiple variant agents.
+   */
+  public async runIntelligenceLoopExperiment(
+    taskId: string, 
+    basePrompt: string, 
+    variantPrompts: { id: string, prompt: string }[], 
+    repo: string,
+    baseBranch: string = "main" 
+  ): Promise<{ sessionIds: string[], branches: string[] }> {
+    this.log(`Initiating Intelligence Loop experiment for task: ${taskId}`);
+    const variantBranches: string[] = [];
+    const sessionIds: string[] = [];
+
+    for (const variant of variantPrompts) {
+        const branchName = `il-variant/${taskId}-${variant.id}-${crypto.randomUUID().substring(0, 4)}`;
+        this.log(`Spawning Jules worker for variant '${variant.id}' on branch: ${branchName}`);
+
+        try {
+            const response = await executeTool('JULES_CREATE_SESSION', {
+                prompt: `[IL-Variant: ${variant.id}]\n${basePrompt}\n\n${variant.prompt}`,
+                sourceId: repo,
+                branch: branchName, 
+                requirePlanApproval: false
+            }, this.context);
+
+            const sessionId = this.parseSessionId(response.result, `il-var-${variant.id}`);
+            
+            this.store.saveSession(sessionId, {
+              id: sessionId,
+              state: 'AWAITING_REVIEW',
+              strategy: `IL-Variant-${variant.id}`,
+              agentNumber: 1,
+              pulled: false,
+              approved: false,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            });
+
+            sessionIds.push(sessionId);
+            variantBranches.push(branchName);
+        } catch (err) {
+            const errorMsg = err instanceof Error ? err.message : String(err);
+            this.log(`  -> [FAIL] Variant ${variant.id}: ${errorMsg}`);
+        }
+        await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+    return { sessionIds, branches: variantBranches }; 
+  }
+
   private log(msg: string): void {
     console.log(msg);
     this.store.appendLog('swarm_dispatch.log', msg);

@@ -79,18 +79,28 @@ export class JulesClient {
     });
   }
 
+  private extractId(sessionId: string): string {
+    // If it contains "sessions/", take everything after it
+    const match = sessionId.match(/sessions\/(.+)$/);
+    if (match) {
+      return match[1];
+    }
+    // Otherwise assume it's already just the bare ID
+    return sessionId;
+  }
+
   async getSession(sessionId: string) {
-    const id = sessionId.replace(/^sessions\//, '');
+    const id = this.extractId(sessionId);
     return this.executeFetch(`${this.baseUrl}/sessions/${id}`, { headers: this.headers });
   }
 
   async listActivities(sessionId: string, pageSize: number = 50) {
-    const id = sessionId.replace(/^sessions\//, '');
+    const id = this.extractId(sessionId);
     return this.executeFetch(`${this.baseUrl}/sessions/${id}/activities?pageSize=${pageSize}`, { headers: this.headers });
   }
 
   async approvePlan(sessionId: string) {
-    const id = sessionId.replace(/^sessions\//, '');
+    const id = this.extractId(sessionId);
     return this.executeFetch(`${this.baseUrl}/sessions/${id}:approvePlan`, {
       method: 'POST',
       headers: this.headers,
@@ -99,7 +109,7 @@ export class JulesClient {
   }
 
   async sendMessage(sessionId: string, prompt: string) {
-    const id = sessionId.replace(/^sessions\//, '');
+    const id = this.extractId(sessionId);
     return this.executeFetch(`${this.baseUrl}/sessions/${id}:sendMessage`, {
       method: 'POST',
       headers: this.headers,

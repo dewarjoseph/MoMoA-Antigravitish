@@ -84,6 +84,7 @@ graph TB
         T6["askHumanTool"] --> TR
         T7["searchRegistryTool"] --> TR
         T8["telemetryDashboardTool"] --> TR
+        T9["autoToolGeneratorTool"] --> TR
     end
 
     subgraph "Persistence"
@@ -143,10 +144,14 @@ graph TB
 | **Orchestrator** | `Orchestrator.run()` | `src/momoa_core/orchestrator.ts` | ~291 | Main loop + Phase 5 init |
 | **Orchestrator** | `FORCE_NO_HITL` | `src/momoa_core/orchestrator.ts` | 53 | **Set to `true`** — headless mode (ASK_HUMAN is async) |
 | **Orchestrator** | Phase 5 init block | `src/momoa_core/orchestrator.ts` | ~443 | Telemetry + Hive Mind + HITL setup |
-| **Swarm** | `MergeSupervisor` | `src/swarm/merge_supervisor.ts` | 23 | AI merge + Hive Mind auto-doc |
+| **Swarm** | `MergeSupervisor` (`evaluateAndMerge`) | `src/swarm/merge_supervisor.ts` | 23 | AI merge + Hive Mind auto-doc |
+| **Swarm** | `MergeSupervisor` (`competitivelyEvaluateAndMerge`)| `src/swarm/merge_supervisor.ts` | 134 | Competitive intelligence variant multi-diff grading |
+| **Swarm** | `SwarmManager` (`runIntelligenceLoopExperiment`) | `src/swarm/swarm_manager.ts` | 211 | Test intelligence variants concurrently |
+| **Swarm** | `EvolutionSynthesizer` | `src/swarm/evolution_synthesizer.ts` | 17 | Autonomous gen-to-gen prompt mutation engine |
 | **Persistence** | `LocalStore` | `src/persistence/local_store.ts` | 22 | FS-based session/log storage |
 | **Tools** | `executeTool()` | `src/tools/multiAgentToolRegistry.ts` | 77 | Tool dispatch |
 | **Tools** | `registerTool()` | `src/tools/multiAgentToolRegistry.ts` | 44 | Tool registration |
+| **Tools** | `generateAndLoadTool()` | `src/tools/multiAgentToolRegistry.ts` | 66 | AST dynamic transpilation / Data URI Hot-Load |
 | **Tools** | Phase 5 tools registered | `src/tools/multiAgentToolRegistry.ts` | ~153 | 6 new tools: QUERY_HIVE_MIND, WRITE_HIVE_MIND, ASK_HUMAN, HITL_STATUS, SEARCH_MCP_REGISTRY, TELEMETRY_DASHBOARD |
 
 ## Zombie Code List 🧟

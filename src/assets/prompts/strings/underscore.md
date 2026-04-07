@@ -1,4 +1,5 @@
 ---
-name: "underscore"
+name: underscore
+description: Single underscore.
 ---
 _
