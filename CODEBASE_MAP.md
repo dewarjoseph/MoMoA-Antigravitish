@@ -119,31 +119,31 @@ graph TB
 | **CLI** | `program.parse()` | `src/cli.ts` | 1 | Main entry, Commander-based |
 | **CLI** | `--mcp-config` option | `src/cli.ts` | 51 | Path to mcp_servers.json |
 | **MCP** | `createMcpServer()` | `src/mcp_server.ts` | ~125 | Registers tools + Phase 5 schemas |
-| **MCP Client** | `McpClientManager` | `src/mcp/mcpClientManager.ts` | 56 | Connection pool + hot-plug |
+| **MCP Client** | `McpClientManager` | `src/mcp/mcpClientManager.ts` | 55 | Connection pool + hot-plug |
 | **MCP Client** | `callTool()` | `src/mcp/mcpClientManager.ts` | ~238 | Proxy with telemetry spans |
 | **MCP Client** | `hotPlugServer()` | `src/mcp/mcpClientManager.ts` | ~550 | **Phase 5**: Mid-session server spawn |
 | **MCP Client** | `hotUnplugServer()` | `src/mcp/mcpClientManager.ts` | ~580 | **Phase 5**: Graceful disconnect |
 | **Registry** | `RegistryResolver` | `src/mcp/registryResolver.ts` | ~60 | **Phase 5**: Smithery.ai + local cache |
 | **Registry** | `searchRegistry()` | `src/mcp/registryResolver.ts` | ~73 | Search for MCP servers by capability |
-| **Self-Heal** | `SelfHealingRunner` | `src/mcp/selfHealingRunner.ts` | 53 | Error recovery + Hive Mind + HITL |
+| **Self-Heal** | `SelfHealingRunner` | `src/mcp/selfHealingRunner.ts` | 61 | Error recovery + Hive Mind + HITL |
 | **Self-Heal** | `executeWithHealing()` | `src/mcp/selfHealingRunner.ts` | ~92 | Hive Mind pre-query + HITL escalation |
-| **Hive Mind** | `HiveMind` | `src/memory/hiveMind.ts` | ~30 | **Phase 5**: Singleton vector memory |
+| **Hive Mind** | `HiveMind` | `src/memory/hiveMind.ts` | 26 | **Phase 5**: Singleton vector memory |
 | **Hive Mind** | `query()` | `src/memory/hiveMind.ts` | ~65 | Semantic search with embeddings |
 | **Hive Mind** | `write()` | `src/memory/hiveMind.ts` | ~100 | Store Context-Action-Outcome triplet |
 | **Hive Mind** | `queryForErrorResolution()` | `src/memory/hiveMind.ts` | ~95 | Error-specific semantic search |
 | **Hive Mind** | `EmbeddingClient` | `src/memory/embeddingClient.ts` | ~10 | Gemini text-embedding-004 wrapper |
-| **Telemetry** | `SwarmTracer` | `src/telemetry/tracer.ts` | ~25 | **Phase 5**: OTel-inspired tracing |
+| **Telemetry** | `SwarmTracer` | `src/telemetry/tracer.ts` | 24 | **Phase 5**: OTel-inspired tracing |
 | **Telemetry** | `startTrace()` | `src/telemetry/tracer.ts` | ~50 | Create root trace context |
 | **Telemetry** | `getExhaustionMetric()` | `src/telemetry/tracer.ts` | ~140 | Token burn detection |
 | **Telemetry** | `formatTraceGantt()` | `src/telemetry/tracer.ts` | ~180 | Gantt-style trace visualization |
-| **HITL** | `HitlManager` | `src/hitl/hitlManager.ts` | ~30 | **Phase 5**: Non-blocking Promise parking |
+| **HITL** | `HitlManager` | `src/hitl/hitlManager.ts` | 31 | **Phase 5**: Non-blocking Promise parking |
 | **HITL** | `requestHuman()` | `src/hitl/hitlManager.ts` | ~70 | Park agent, send notifications |
 | **HITL** | `respondToRequest()` | `src/hitl/hitlManager.ts` | ~120 | Wake up parked agent |
 | **HITL** | `notifyStderr()` | `src/hitl/notifier.ts` | ~10 | Formatted stderr alert |
 | **Orchestrator** | `Orchestrator.run()` | `src/momoa_core/orchestrator.ts` | ~291 | Main loop + Phase 5 init |
 | **Orchestrator** | `FORCE_NO_HITL` | `src/momoa_core/orchestrator.ts` | 53 | **Set to `true`** — headless mode (ASK_HUMAN is async) |
 | **Orchestrator** | Phase 5 init block | `src/momoa_core/orchestrator.ts` | ~443 | Telemetry + Hive Mind + HITL setup |
-| **Swarm** | `MergeSupervisor` | `src/swarm/merge_supervisor.ts` | 20 | AI merge + Hive Mind auto-doc |
+| **Swarm** | `MergeSupervisor` | `src/swarm/merge_supervisor.ts` | 23 | AI merge + Hive Mind auto-doc |
 | **Persistence** | `LocalStore` | `src/persistence/local_store.ts` | 22 | FS-based session/log storage |
 | **Tools** | `executeTool()` | `src/tools/multiAgentToolRegistry.ts` | 77 | Tool dispatch |
 | **Tools** | `registerTool()` | `src/tools/multiAgentToolRegistry.ts` | 44 | Tool registration |

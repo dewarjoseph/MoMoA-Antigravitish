@@ -1,8 +1,0 @@
-﻿
-> momo-overseer@1.0.0 build
-> rimraf dist && tsc && copyfiles -u 1 "src/assets/**/*" dist
-
-src/tests/mcp_validation/run_all.ts(32,41): error TS1470: The 'import.meta' meta-property is not allowed in files which will build into CommonJS output.
-src/tests/mcp_validation/test_mcp_hotplug.ts(51,26): error TS1470: The 'import.meta' meta-property is not allowed in files which will build into CommonJS output.
-src/tests/mcp_validation/test_self_healing_logic.ts(209,10): error TS2345: Argument of type 'boolean | undefined' is not assignable to parameter of type 'boolean'.
-  Type 'undefined' is not assignable to type 'boolean'.
