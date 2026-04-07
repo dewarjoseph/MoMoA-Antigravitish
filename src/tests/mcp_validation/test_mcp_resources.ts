@@ -17,6 +17,7 @@ import { readMcpResourceTool } from '../../tools/implementations/readMcpResource
 import { getMcpPromptTool } from '../../tools/implementations/getMcpPromptTool.js';
 import type { McpClientManager } from '../../mcp/mcpClientManager.js';
 import type { MultiAgentToolContext } from '../../momoa_core/types.js';
+import { SwarmTracer } from '../../telemetry/tracer.js';
 
 // ── Utilities ───────────────────────────────────────────────────────────────
 
@@ -29,9 +30,9 @@ function assert(condition: boolean, testName: string, details?: string): void {
   totalTests++;
   if (condition) {
     passedTests++;
-    console.log(`  ${PASS} — ${testName}`);
+    SwarmTracer.getInstance().emitLog(`  ${PASS} — ${testName}`);
   } else {
-    console.log(`  ${FAIL} — ${testName}${details ? ` (${details})` : ''}`);
+    SwarmTracer.getInstance().emitLog(`  ${FAIL} — ${testName}${details ? ` (${details})` : ''}`);
   }
 }
 
@@ -136,14 +137,14 @@ function createMockContext(manager?: McpClientManager): MultiAgentToolContext {
 // ── Tests ───────────────────────────────────────────────────────────────────
 
 async function runTests(): Promise<void> {
-  console.log('\n╔══════════════════════════════════════════════════════════╗');
-  console.log('║  TEST C: Protocol Parity — Resources & Prompts          ║');
-  console.log('╚══════════════════════════════════════════════════════════╝\n');
+  SwarmTracer.getInstance().emitLog('\n╔══════════════════════════════════════════════════════════╗');
+  SwarmTracer.getInstance().emitLog('║  TEST C: Protocol Parity — Resources & Prompts          ║');
+  SwarmTracer.getInstance().emitLog('╚══════════════════════════════════════════════════════════╝\n');
 
   const mockManager = createMockManager();
 
   // ── Test 1: No Manager ────────────────────────────────────────────────
-  console.log('── Phase 1: Error Handling (No Manager) ──');
+  SwarmTracer.getInstance().emitLog('── Phase 1: Error Handling (No Manager) ──');
 
   const noMgrCtx = createMockContext(undefined);
   const noMgrResult = await readMcpResourceTool.execute({}, noMgrCtx);
@@ -153,11 +154,11 @@ async function runTests(): Promise<void> {
   assert(noMgrPrompt.result.includes('No MCP Client Manager'), 'GetMcpPrompt fails gracefully without manager');
 
   // ── Test 2: List All Resources ────────────────────────────────────────
-  console.log('\n── Phase 2: List All Resources ──');
+  SwarmTracer.getInstance().emitLog('\n── Phase 2: List All Resources ──');
 
   const ctx = createMockContext(mockManager);
   const listResult = await readMcpResourceTool.execute({}, ctx);
-  console.log(`  [INFO] Resource listing:\n${listResult.result.split('\n').map(l => '    ' + l).join('\n')}`);
+  SwarmTracer.getInstance().emitLog(`  [INFO] Resource listing:\n${listResult.result.split('\n').map(l => '    ' + l).join('\n')}`);
 
   assert(listResult.result.includes('mock-server-1'), 'Lists resources from server 1');
   assert(listResult.result.includes('mock-server-2'), 'Lists resources from server 2');
@@ -165,13 +166,13 @@ async function runTests(): Promise<void> {
   assert(listResult.result.includes('App Settings'), 'Lists App Settings resource');
 
   // ── Test 3: Read Specific Resource ────────────────────────────────────
-  console.log('\n── Phase 3: Read Specific Resource ──');
+  SwarmTracer.getInstance().emitLog('\n── Phase 3: Read Specific Resource ──');
 
   const readResult = await readMcpResourceTool.execute(
     { server: 'mock-server-1', uri: 'file://docs/api' },
     ctx
   );
-  console.log(`  [INFO] Resource content:\n${readResult.result.split('\n').map(l => '    ' + l).join('\n')}`);
+  SwarmTracer.getInstance().emitLog(`  [INFO] Resource content:\n${readResult.result.split('\n').map(l => '    ' + l).join('\n')}`);
   assert(readResult.result.includes('GET /users'), 'Read API resource returns correct content');
 
   const schemaResult = await readMcpResourceTool.execute(
@@ -181,7 +182,7 @@ async function runTests(): Promise<void> {
   assert(schemaResult.result.includes('CREATE TABLE'), 'Read schema resource returns SQL');
 
   // ── Test 4: Read Resource Error Handling ─────────────────────────────
-  console.log('\n── Phase 4: Resource Error Handling ──');
+  SwarmTracer.getInstance().emitLog('\n── Phase 4: Resource Error Handling ──');
 
   const missingResource = await readMcpResourceTool.execute(
     { server: 'mock-server-1', uri: 'file://nonexistent' },
@@ -196,10 +197,10 @@ async function runTests(): Promise<void> {
   assert(partialParams.result.includes('required'), 'Returns error when URI is missing');
 
   // ── Test 5: List All Prompts ──────────────────────────────────────────
-  console.log('\n── Phase 5: List All Prompts ──');
+  SwarmTracer.getInstance().emitLog('\n── Phase 5: List All Prompts ──');
 
   const promptList = await getMcpPromptTool.execute({}, ctx);
-  console.log(`  [INFO] Prompt listing:\n${promptList.result.split('\n').map(l => '    ' + l).join('\n')}`);
+  SwarmTracer.getInstance().emitLog(`  [INFO] Prompt listing:\n${promptList.result.split('\n').map(l => '    ' + l).join('\n')}`);
 
   assert(promptList.result.includes('debug-assistant'), 'Lists debug-assistant prompt');
   assert(promptList.result.includes('code-reviewer'), 'Lists code-reviewer prompt');
@@ -207,13 +208,13 @@ async function runTests(): Promise<void> {
   assert(promptList.result.includes('mock-server-1'), 'Shows server name in listing');
 
   // ── Test 6: Get Specific Prompt ───────────────────────────────────────
-  console.log('\n── Phase 6: Get Specific Prompt ──');
+  SwarmTracer.getInstance().emitLog('\n── Phase 6: Get Specific Prompt ──');
 
   const promptResult = await getMcpPromptTool.execute(
     { server: 'mock-server-1', prompt_name: 'debug-assistant', args: { errorLog: 'TypeError: Cannot read property x' } },
     ctx
   );
-  console.log(`  [INFO] Prompt content:\n${promptResult.result.split('\n').map(l => '    ' + l).join('\n')}`);
+  SwarmTracer.getInstance().emitLog(`  [INFO] Prompt content:\n${promptResult.result.split('\n').map(l => '    ' + l).join('\n')}`);
   assert(promptResult.result.includes('TypeError'), 'Prompt interpolates arguments correctly');
 
   const summarizerResult = await getMcpPromptTool.execute(
@@ -223,7 +224,7 @@ async function runTests(): Promise<void> {
   assert(summarizerResult.result.includes('Summarize'), 'Summarizer prompt returns correct template');
 
   // ── Test 7: Prompt Error Handling ─────────────────────────────────────
-  console.log('\n── Phase 7: Prompt Error Handling ──');
+  SwarmTracer.getInstance().emitLog('\n── Phase 7: Prompt Error Handling ──');
 
   const missingPrompt = await getMcpPromptTool.execute(
     { server: 'mock-server-1', prompt_name: 'nonexistent' },
@@ -238,14 +239,14 @@ async function runTests(): Promise<void> {
   assert(partialPrompt.result.includes('required'), 'Returns error when prompt_name is missing');
 
   // ── Summary ───────────────────────────────────────────────────────────
-  console.log('\n╔══════════════════════════════════════════════════════════╗');
-  console.log(`║  RESULTS: ${passedTests}/${totalTests} tests passed${' '.repeat(Math.max(0, 35 - `${passedTests}/${totalTests}`.length))}║`);
-  console.log('╚══════════════════════════════════════════════════════════╝\n');
+  SwarmTracer.getInstance().emitLog('\n╔══════════════════════════════════════════════════════════╗');
+  SwarmTracer.getInstance().emitLog(`║  RESULTS: ${passedTests}/${totalTests} tests passed${' '.repeat(Math.max(0, 35 - `${passedTests}/${totalTests}`.length))}║`);
+  SwarmTracer.getInstance().emitLog('╚══════════════════════════════════════════════════════════╝\n');
 
   if (passedTests < totalTests) { process.exit(1); } else { process.exit(0); }
 }
 
 runTests().catch(err => {
-  console.error('Fatal test error:', err);
+  SwarmTracer.getInstance().emitLog('Fatal test error:', err);
   process.exit(1);
 });

@@ -15,6 +15,7 @@
  */
 
 import * as crypto from 'node:crypto';
+import { SwarmTracer } from '../../telemetry/tracer.js';
 
 // ── Utilities ───────────────────────────────────────────────────────────────
 
@@ -27,9 +28,9 @@ function assert(condition: boolean, testName: string, details?: string): void {
   totalTests++;
   if (condition) {
     passedTests++;
-    console.log(`    ${PASS} — ${testName}`);
+    SwarmTracer.getInstance().emitLog(`    ${PASS} — ${testName}`);
   } else {
-    console.log(`    ${FAIL} — ${testName}${details ? ` (${details})` : ''}`);
+    SwarmTracer.getInstance().emitLog(`    ${FAIL} — ${testName}${details ? ` (${details})` : ''}`);
   }
 }
 
@@ -193,16 +194,16 @@ function searchChunked(
 // ── Tests ───────────────────────────────────────────────────────────────────
 
 async function runTests(): Promise<void> {
-  console.log('\n╔══════════════════════════════════════════════════════════╗');
-  console.log('║  TEST A: Mega-Context Stress Test                       ║');
-  console.log('║  "50,000+ Lines / 5MB+ Needle-in-Haystack"              ║');
-  console.log('╚══════════════════════════════════════════════════════════╝\n');
+  SwarmTracer.getInstance().emitLog('\n╔══════════════════════════════════════════════════════════╗');
+  SwarmTracer.getInstance().emitLog('║  TEST A: Mega-Context Stress Test                       ║');
+  SwarmTracer.getInstance().emitLog('║  "50,000+ Lines / 5MB+ Needle-in-Haystack"              ║');
+  SwarmTracer.getInstance().emitLog('╚══════════════════════════════════════════════════════════╝\n');
 
   const memBefore = getMemoryMB();
-  console.log(`  📊 Memory BEFORE: Heap=${memBefore.heapUsed}MB, RSS=${memBefore.rss}MB\n`);
+  SwarmTracer.getInstance().emitLog(`  📊 Memory BEFORE: Heap=${memBefore.heapUsed}MB, RSS=${memBefore.rss}MB\n`);
 
   // ── Phase 1: Payload Generation ─────────────────────────────────────────
-  console.log('── Phase 1: Mega-Payload Generation ──');
+  SwarmTracer.getInstance().emitLog('── Phase 1: Mega-Payload Generation ──');
   const genStart = performance.now();
 
   const payload = generateMegaPayload({
@@ -213,20 +214,20 @@ async function runTests(): Promise<void> {
   const genTime = performance.now() - genStart;
   const memAfterGen = getMemoryMB();
 
-  console.log(`    Lines:     ${payload.totalLines.toLocaleString()}`);
-  console.log(`    Bytes:     ${formatBytes(payload.totalBytes)}`);
-  console.log(`    Needle:    ${payload.needle}`);
-  console.log(`    Needle at: line ${payload.needleLine.toLocaleString()}`);
-  console.log(`    Gen time:  ${formatMs(genTime)}`);
-  console.log(`    Memory:    Heap=${memAfterGen.heapUsed}MB, RSS=${memAfterGen.rss}MB`);
-  console.log(`    Δ Heap:    +${memAfterGen.heapUsed - memBefore.heapUsed}MB\n`);
+  SwarmTracer.getInstance().emitLog(`    Lines:     ${payload.totalLines.toLocaleString()}`);
+  SwarmTracer.getInstance().emitLog(`    Bytes:     ${formatBytes(payload.totalBytes)}`);
+  SwarmTracer.getInstance().emitLog(`    Needle:    ${payload.needle}`);
+  SwarmTracer.getInstance().emitLog(`    Needle at: line ${payload.needleLine.toLocaleString()}`);
+  SwarmTracer.getInstance().emitLog(`    Gen time:  ${formatMs(genTime)}`);
+  SwarmTracer.getInstance().emitLog(`    Memory:    Heap=${memAfterGen.heapUsed}MB, RSS=${memAfterGen.rss}MB`);
+  SwarmTracer.getInstance().emitLog(`    Δ Heap:    +${memAfterGen.heapUsed - memBefore.heapUsed}MB\n`);
 
   assert(payload.totalLines >= 50_000, `Payload has 50k+ lines (got: ${payload.totalLines.toLocaleString()})`);
   assert(payload.totalBytes >= 4 * 1024 * 1024, `Payload is 4MB+ (got: ${formatBytes(payload.totalBytes)})`);
   assert(payload.needle.startsWith('NEEDLE_'), 'Needle hash generated');
 
   // ── Phase 2: MCP Resource Registration ──────────────────────────────────
-  console.log('\n── Phase 2: MCP Resource Pipeline Ingestion ──');
+  SwarmTracer.getInstance().emitLog('\n── Phase 2: MCP Resource Pipeline Ingestion ──');
 
   const pipeline = new MockMegaResourcePipeline();
   const ingestStart = performance.now();
@@ -234,62 +235,62 @@ async function runTests(): Promise<void> {
   const ingestTime = performance.now() - ingestStart;
 
   const resources = pipeline.listResources();
-  console.log(`    Ingestion time: ${formatMs(ingestTime)}`);
-  console.log(`    Resources: ${resources.length}`);
-  console.log(`    Resource size: ${formatBytes(resources[0].sizeBytes)}`);
+  SwarmTracer.getInstance().emitLog(`    Ingestion time: ${formatMs(ingestTime)}`);
+  SwarmTracer.getInstance().emitLog(`    Resources: ${resources.length}`);
+  SwarmTracer.getInstance().emitLog(`    Resource size: ${formatBytes(resources[0].sizeBytes)}`);
 
   assert(resources.length === 1, 'Resource registered in pipeline');
   assert(resources[0].sizeBytes >= 4 * 1024 * 1024, 'Resource retains full size');
 
   // ── Phase 3: Full-Context Read (No Truncation) ──────────────────────────
-  console.log('\n── Phase 3: Full-Context Read — Truncation Check ──');
+  SwarmTracer.getInstance().emitLog('\n── Phase 3: Full-Context Read — Truncation Check ──');
 
   const readStart = performance.now();
   const fullContent = pipeline.readResource('file://mega/logs');
   const readTime = performance.now() - readStart;
   const memAfterRead = getMemoryMB();
 
-  console.log(`    Read time:  ${formatMs(readTime)}`);
-  console.log(`    Content size: ${formatBytes(Buffer.byteLength(fullContent))}`);
-  console.log(`    Memory: Heap=${memAfterRead.heapUsed}MB, RSS=${memAfterRead.rss}MB`);
+  SwarmTracer.getInstance().emitLog(`    Read time:  ${formatMs(readTime)}`);
+  SwarmTracer.getInstance().emitLog(`    Content size: ${formatBytes(Buffer.byteLength(fullContent))}`);
+  SwarmTracer.getInstance().emitLog(`    Memory: Heap=${memAfterRead.heapUsed}MB, RSS=${memAfterRead.rss}MB`);
 
   assert(fullContent.length === payload.content.length, `No truncation (original: ${payload.content.length}, read: ${fullContent.length})`);
   assert(fullContent.includes(payload.needle), 'Needle survives pipeline read');
 
   // ── Phase 4: Linear Needle Search ───────────────────────────────────────
-  console.log('\n── Phase 4: Linear Needle Search ──');
+  SwarmTracer.getInstance().emitLog('\n── Phase 4: Linear Needle Search ──');
 
   const linearResult = searchLinear(fullContent, payload.needle);
-  console.log(`    Found:     ${linearResult.found}`);
-  console.log(`    Line:      ${linearResult.lineNum.toLocaleString()}`);
-  console.log(`    Scan time: ${formatMs(linearResult.timeMs)}`);
+  SwarmTracer.getInstance().emitLog(`    Found:     ${linearResult.found}`);
+  SwarmTracer.getInstance().emitLog(`    Line:      ${linearResult.lineNum.toLocaleString()}`);
+  SwarmTracer.getInstance().emitLog(`    Scan time: ${formatMs(linearResult.timeMs)}`);
 
   assert(linearResult.found, 'Needle found via linear scan');
   assert(linearResult.lineNum === payload.needleLine, `Found at correct line (expected: ${payload.needleLine}, got: ${linearResult.lineNum})`);
 
   // ── Phase 5: Regex Extraction ───────────────────────────────────────────
-  console.log('\n── Phase 5: Regex Extraction ──');
+  SwarmTracer.getInstance().emitLog('\n── Phase 5: Regex Extraction ──');
 
   const regexResult = searchRegex(fullContent, payload.needle);
-  console.log(`    Found:      ${regexResult.found}`);
-  console.log(`    Match:      ${regexResult.match}`);
-  console.log(`    Regex time: ${formatMs(regexResult.timeMs)}`);
+  SwarmTracer.getInstance().emitLog(`    Found:      ${regexResult.found}`);
+  SwarmTracer.getInstance().emitLog(`    Match:      ${regexResult.match}`);
+  SwarmTracer.getInstance().emitLog(`    Regex time: ${formatMs(regexResult.timeMs)}`);
 
   assert(regexResult.found, 'Needle found via regex extraction');
   assert(regexResult.match === payload.needle, 'Regex match is exact');
 
   // ── Phase 6: Chunked Streaming Search ──────────────────────────────────
-  console.log('\n── Phase 6: Chunked Streaming Search ──');
+  SwarmTracer.getInstance().emitLog('\n── Phase 6: Chunked Streaming Search ──');
 
   const chunkSizes = [32 * 1024, 64 * 1024, 256 * 1024];
   for (const cs of chunkSizes) {
     const chunked = searchChunked(pipeline, 'file://mega/logs', payload.needle, cs);
-    console.log(`    Chunk size: ${formatBytes(cs)} → ${chunked.totalChunks} chunks, found at chunk #${chunked.chunkIndex}, time: ${formatMs(chunked.timeMs)}`);
+    SwarmTracer.getInstance().emitLog(`    Chunk size: ${formatBytes(cs)} → ${chunked.totalChunks} chunks, found at chunk #${chunked.chunkIndex}, time: ${formatMs(chunked.timeMs)}`);
     assert(chunked.found, `Needle found with ${formatBytes(cs)} chunks`);
   }
 
   // ── Phase 7: Memory Stability ──────────────────────────────────────────
-  console.log('\n── Phase 7: Memory Stability Check ──');
+  SwarmTracer.getInstance().emitLog('\n── Phase 7: Memory Stability Check ──');
 
   // Force GC if available
   if (global.gc) {
@@ -300,8 +301,8 @@ async function runTests(): Promise<void> {
   const memFinal = getMemoryMB();
   const heapDelta = memFinal.heapUsed - memBefore.heapUsed;
 
-  console.log(`    Final memory: Heap=${memFinal.heapUsed}MB, RSS=${memFinal.rss}MB`);
-  console.log(`    Total Δ Heap: +${heapDelta}MB`);
+  SwarmTracer.getInstance().emitLog(`    Final memory: Heap=${memFinal.heapUsed}MB, RSS=${memFinal.rss}MB`);
+  SwarmTracer.getInstance().emitLog(`    Total Δ Heap: +${heapDelta}MB`);
 
   // Heap growth should be bounded — payload is ~5MB, doubling for pipeline = ~10MB
   // Allow up to 200MB to account for V8 overhead
@@ -309,7 +310,7 @@ async function runTests(): Promise<void> {
   assert(memFinal.rss < 512, `RSS stays under 512MB (got: ${memFinal.rss}MB)`);
 
   // ── Phase 8: Multi-Payload Stress ──────────────────────────────────────
-  console.log('\n── Phase 8: Multi-Payload Stress (3 × 20k lines) ──');
+  SwarmTracer.getInstance().emitLog('\n── Phase 8: Multi-Payload Stress (3 × 20k lines) ──');
 
   const stressStart = performance.now();
   const payloads: HaystackPayload[] = [];
@@ -320,9 +321,9 @@ async function runTests(): Promise<void> {
   }
 
   const stressResources = pipeline.listResources();
-  console.log(`    Total resources: ${stressResources.length}`);
-  console.log(`    Total bytes: ${formatBytes(stressResources.reduce((a, r) => a + r.sizeBytes, 0))}`);
-  console.log(`    Time: ${formatMs(performance.now() - stressStart)}`);
+  SwarmTracer.getInstance().emitLog(`    Total resources: ${stressResources.length}`);
+  SwarmTracer.getInstance().emitLog(`    Total bytes: ${formatBytes(stressResources.reduce((a, r) => a + r.sizeBytes, 0))}`);
+  SwarmTracer.getInstance().emitLog(`    Time: ${formatMs(performance.now() - stressStart)}`);
 
   // Verify each needle
   for (let i = 0; i < payloads.length; i++) {
@@ -331,18 +332,18 @@ async function runTests(): Promise<void> {
   }
 
   const memStress = getMemoryMB();
-  console.log(`    Final memory: Heap=${memStress.heapUsed}MB, RSS=${memStress.rss}MB`);
+  SwarmTracer.getInstance().emitLog(`    Final memory: Heap=${memStress.heapUsed}MB, RSS=${memStress.rss}MB`);
   assert(memStress.rss < 768, `RSS stays under 768MB after stress (got: ${memStress.rss}MB)`);
 
   // ── Summary ───────────────────────────────────────────────────────────
-  console.log('\n╔══════════════════════════════════════════════════════════╗');
-  console.log(`║  RESULTS: ${passedTests}/${totalTests} tests passed${' '.repeat(Math.max(0, 35 - `${passedTests}/${totalTests}`.length))}║`);
-  console.log('╚══════════════════════════════════════════════════════════╝\n');
+  SwarmTracer.getInstance().emitLog('\n╔══════════════════════════════════════════════════════════╗');
+  SwarmTracer.getInstance().emitLog(`║  RESULTS: ${passedTests}/${totalTests} tests passed${' '.repeat(Math.max(0, 35 - `${passedTests}/${totalTests}`.length))}║`);
+  SwarmTracer.getInstance().emitLog('╚══════════════════════════════════════════════════════════╝\n');
 
   if (passedTests < totalTests) { process.exit(1); } else { process.exit(0); }
 }
 
 runTests().catch(err => {
-  console.error('Fatal test error:', err);
+  SwarmTracer.getInstance().emitLog('Fatal test error:', err);
   process.exit(1);
 });

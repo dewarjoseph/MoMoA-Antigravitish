@@ -90,6 +90,7 @@ swarm
   .option('-b, --branch <branch>', 'Target branch', 'main')
   .option('-d, --target-dir <dir>', 'Target directory for agents', process.cwd())
   .option('-p, --prompt-dir <dir>', 'Directory containing prompt .md files')
+  .option('-t, --todo-file <path>', 'Path to a TODO_swarm.md file to dispatch each line as an agent prompt')
   .option('-s, --strategies <list>', 'Comma-separated strategy list', (val: string) => val.split(','))
   .action(async (opts) => {
     const manager = new SwarmManager(store, {} as any);
@@ -99,6 +100,7 @@ swarm
       repo: opts.repo,
       branch: opts.branch,
       promptDir: opts.promptDir ? path.resolve(opts.promptDir) : undefined,
+      todoFile: opts.todoFile ? path.resolve(opts.todoFile) : undefined,
       strategies: opts.strategies ?? DEFAULT_STRATEGIES,
     });
 

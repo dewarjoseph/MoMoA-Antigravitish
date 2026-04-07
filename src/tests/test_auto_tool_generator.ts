@@ -1,7 +1,8 @@
 import { generateAndLoadTool, getTool } from '../tools/multiAgentToolRegistry.js';
+import { SwarmTracer } from '../telemetry/tracer.js';
 
 async function runTest() {
-  console.log("Loading bold generated tool...");
+  SwarmTracer.getInstance().emitLog("Loading bold generated tool...");
   const tsCode = `
 export const mathTool = {
   name: 'TOOL/MATH{',
@@ -19,16 +20,16 @@ export default mathTool;
 
   try {
     const newTool = await generateAndLoadTool(tsCode);
-    console.log("Tool created dynamically: " + newTool.displayName);
+    SwarmTracer.getInstance().emitLog("Tool created dynamically: " + newTool.displayName);
     const registered = getTool('TOOL/MATH{');
     if (!registered) throw new Error("Not in registry!");
     
     // Simulate execution
     const res = await registered.execute({ expression: 'test' }, {} as any);
-    console.log("Execution Result:", res.result);
-    console.log("Test: PASS");
+    SwarmTracer.getInstance().emitLog("Execution Result:", res.result);
+    SwarmTracer.getInstance().emitLog("Test: PASS");
   } catch(e) {
-    console.error("Test: FAIL", e);
+    SwarmTracer.getInstance().emitLog("Test: FAIL", e);
   }
 }
 

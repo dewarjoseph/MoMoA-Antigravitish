@@ -28,6 +28,7 @@ import * as os from 'node:os';
 import { spawn } from 'node:child_process';
 import { LocalStore } from '../../persistence/local_store.js';
 import { generateStatusReport } from '../../swarm/report_writer.js';
+import { SwarmTracer } from '../../telemetry/tracer.js';
 
 // ── Utilities ───────────────────────────────────────────────────────────────
 
@@ -40,9 +41,9 @@ function assert(condition: boolean, testName: string, details?: string): void {
   totalTests++;
   if (condition) {
     passedTests++;
-    console.log(`    ${PASS} — ${testName}`);
+    SwarmTracer.getInstance().emitLog(`    ${PASS} — ${testName}`);
   } else {
-    console.log(`    ${FAIL} — ${testName}${details ? ` (${details})` : ''}`);
+    SwarmTracer.getInstance().emitLog(`    ${FAIL} — ${testName}${details ? ` (${details})` : ''}`);
   }
 }
 
@@ -62,16 +63,16 @@ const transitions: Array<{ phase: string; ts: string; detail: string }> = [];
 function logTransition(phase: string, detail: string): void {
   const t = ts();
   transitions.push({ phase, ts: t, detail });
-  console.log(`    [${t}] [${phase}] ${detail}`);
+  SwarmTracer.getInstance().emitLog(`    [${t}] [${phase}] ${detail}`);
 }
 
 // ── Main Test ───────────────────────────────────────────────────────────────
 
 async function runE2E(): Promise<void> {
-  console.log('\n╔══════════════════════════════════════════════════════════╗');
-  console.log('║  ANTIGRAVITY E2E: Full Swarm Integration Harness        ║');
-  console.log('║  "Mega-Context → Background Task → Jules Handoff"       ║');
-  console.log('╚══════════════════════════════════════════════════════════╝\n');
+  SwarmTracer.getInstance().emitLog('\n╔══════════════════════════════════════════════════════════╗');
+  SwarmTracer.getInstance().emitLog('║  ANTIGRAVITY E2E: Full Swarm Integration Harness        ║');
+  SwarmTracer.getInstance().emitLog('║  "Mega-Context → Background Task → Jules Handoff"       ║');
+  SwarmTracer.getInstance().emitLog('╚══════════════════════════════════════════════════════════╝\n');
 
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'antigravity-e2e-'));
   const store = new LocalStore(path.join(tempDir, '.swarm'));
@@ -79,9 +80,9 @@ async function runE2E(): Promise<void> {
   // ──────────────────────────────────────────────────────────────────────
   //  STEP 1: MEGA-CONTEXT INGEST
   // ──────────────────────────────────────────────────────────────────────
-  console.log('━'.repeat(60));
-  console.log('  STEP 1: MEGA-CONTEXT INGEST');
-  console.log('━'.repeat(60));
+  SwarmTracer.getInstance().emitLog('━'.repeat(60));
+  SwarmTracer.getInstance().emitLog('  STEP 1: MEGA-CONTEXT INGEST');
+  SwarmTracer.getInstance().emitLog('━'.repeat(60));
 
   const memBefore = process.memoryUsage();
   const ingestStart = performance.now();
@@ -107,7 +108,7 @@ async function runE2E(): Promise<void> {
   const memAfter = process.memoryUsage();
 
   logTransition('MEGA-CONTEXT INGEST', `${TOTAL_LINES.toLocaleString()} lines, ${formatBytes(payloadBytes)}, ${ingestTime.toFixed(0)}ms`);
-  console.log(`    Memory Δ: +${Math.round((memAfter.heapUsed - memBefore.heapUsed) / (1024 * 1024))}MB heap`);
+  SwarmTracer.getInstance().emitLog(`    Memory Δ: +${Math.round((memAfter.heapUsed - memBefore.heapUsed) / (1024 * 1024))}MB heap`);
 
   assert(payloadBytes >= 2 * 1024 * 1024, `Payload is 2MB+ (got: ${formatBytes(payloadBytes)})`);
   assert(ingestTime < 5000, `Ingestion completed in <5s (got: ${ingestTime.toFixed(0)}ms)`);
@@ -129,15 +130,15 @@ async function runE2E(): Promise<void> {
   assert(extractedInstruction !== null, 'Hidden instruction extracted from mega-context');
   assert(extractedInstruction?.verify_hash === SECRET_HASH, `Hash verified: ${SECRET_HASH}`);
   assert(extractedInstruction?.action === 'compute_sum', 'Action is compute_sum');
-  console.log(`    Extraction time: ${extractTime.toFixed(0)}ms`);
-  console.log(`    Instruction: ${JSON.stringify(extractedInstruction)}`);
+  SwarmTracer.getInstance().emitLog(`    Extraction time: ${extractTime.toFixed(0)}ms`);
+  SwarmTracer.getInstance().emitLog(`    Instruction: ${JSON.stringify(extractedInstruction)}`);
 
   // ──────────────────────────────────────────────────────────────────────
   //  STEP 2: SPAWN BACKGROUND PID
   // ──────────────────────────────────────────────────────────────────────
-  console.log('\n' + '━'.repeat(60));
-  console.log('  STEP 2: SPAWN BACKGROUND PID');
-  console.log('━'.repeat(60));
+  SwarmTracer.getInstance().emitLog('\n' + '━'.repeat(60));
+  SwarmTracer.getInstance().emitLog('  STEP 2: SPAWN BACKGROUND PID');
+  SwarmTracer.getInstance().emitLog('━'.repeat(60));
 
   // Generate the data-processing script based on the extracted instruction
   const [rangeStart, rangeEnd] = extractedInstruction.range;
@@ -179,9 +180,9 @@ async function runE2E(): Promise<void> {
   // ──────────────────────────────────────────────────────────────────────
   //  STEP 3: MAIN LOOP UNBLOCKED
   // ──────────────────────────────────────────────────────────────────────
-  console.log('\n' + '━'.repeat(60));
-  console.log('  STEP 3: MAIN LOOP UNBLOCKED');
-  console.log('━'.repeat(60));
+  SwarmTracer.getInstance().emitLog('\n' + '━'.repeat(60));
+  SwarmTracer.getInstance().emitLog('  STEP 3: MAIN LOOP UNBLOCKED');
+  SwarmTracer.getInstance().emitLog('━'.repeat(60));
 
   let mainPings = 0;
   const pingLog: string[] = [];
@@ -192,7 +193,7 @@ async function runE2E(): Promise<void> {
     const elapsed = ((performance.now() - pingStartMs) / 1000).toFixed(2);
     const msg = `Ping #${mainPings} at +${elapsed}s`;
     pingLog.push(msg);
-    console.log(`    [${ts()}] [PING] ${msg}`);
+    SwarmTracer.getInstance().emitLog(`    [${ts()}] [PING] ${msg}`);
   }, 500);
 
   // Also check setImmediate responsiveness
@@ -207,9 +208,9 @@ async function runE2E(): Promise<void> {
   // ──────────────────────────────────────────────────────────────────────
   //  STEP 4: TASK COMPLETE
   // ──────────────────────────────────────────────────────────────────────
-  console.log('\n' + '━'.repeat(60));
-  console.log('  STEP 4: TASK COMPLETE');
-  console.log('━'.repeat(60));
+  SwarmTracer.getInstance().emitLog('\n' + '━'.repeat(60));
+  SwarmTracer.getInstance().emitLog('  STEP 4: TASK COMPLETE');
+  SwarmTracer.getInstance().emitLog('━'.repeat(60));
 
   const taskResult = await new Promise<{ stdout: string; stderr: string; exitCode: number | null }>((resolve) => {
     let stdout = '';
@@ -233,8 +234,8 @@ async function runE2E(): Promise<void> {
 
   logTransition('TASK COMPLETE', `Exit code ${taskResult.exitCode}, duration ${(totalTaskMs / 1000).toFixed(2)}s, ${mainPings} pings during execution`);
 
-  console.log(`    Stdout: ${taskResult.stdout}`);
-  if (taskResult.stderr) console.log(`    Stderr: ${taskResult.stderr}`);
+  SwarmTracer.getInstance().emitLog(`    Stdout: ${taskResult.stdout}`);
+  if (taskResult.stderr) SwarmTracer.getInstance().emitLog(`    Stderr: ${taskResult.stderr}`);
 
   assert(taskResult.exitCode === 0, 'Task exited with code 0');
   assert(taskResult.stdout.includes('STATUS=SUCCESS'), 'Task output contains SUCCESS');
@@ -249,9 +250,9 @@ async function runE2E(): Promise<void> {
   // ──────────────────────────────────────────────────────────────────────
   //  STEP 5: JULES VALIDATION
   // ──────────────────────────────────────────────────────────────────────
-  console.log('\n' + '━'.repeat(60));
-  console.log('  STEP 5: JULES VALIDATION');
-  console.log('━'.repeat(60));
+  SwarmTracer.getInstance().emitLog('\n' + '━'.repeat(60));
+  SwarmTracer.getInstance().emitLog('  STEP 5: JULES VALIDATION');
+  SwarmTracer.getInstance().emitLog('━'.repeat(60));
 
   // Jules receives the artifact and validates
   const julesInput = {
@@ -260,10 +261,10 @@ async function runE2E(): Promise<void> {
     agentExitCode: taskResult.exitCode,
   };
 
-  console.log(`    [${ts()}] Jules received artifact:`);
-  console.log(`      Prompt:  "${julesInput.originalPrompt.substring(0, 80)}..."`);
-  console.log(`      Stdout:  "${julesInput.agentStdout.split('\n')[0]}..."`);
-  console.log(`      Exit:    ${julesInput.agentExitCode}`);
+  SwarmTracer.getInstance().emitLog(`    [${ts()}] Jules received artifact:`);
+  SwarmTracer.getInstance().emitLog(`      Prompt:  "${julesInput.originalPrompt.substring(0, 80)}..."`);
+  SwarmTracer.getInstance().emitLog(`      Stdout:  "${julesInput.agentStdout.split('\n')[0]}..."`);
+  SwarmTracer.getInstance().emitLog(`      Exit:    ${julesInput.agentExitCode}`);
 
   // Jules validation logic
   const julesChecks = {
@@ -278,9 +279,9 @@ async function runE2E(): Promise<void> {
 
   logTransition('JULES VALIDATION', `Verdict: ${julesVerdict} (${Object.values(julesChecks).filter(Boolean).length}/${Object.keys(julesChecks).length} checks passed)`);
 
-  console.log(`    Checks:`);
+  SwarmTracer.getInstance().emitLog(`    Checks:`);
   for (const [k, v] of Object.entries(julesChecks)) {
-    console.log(`      ${v ? '✅' : '❌'} ${k}`);
+    SwarmTracer.getInstance().emitLog(`      ${v ? '✅' : '❌'} ${k}`);
   }
 
   assert(julesChecks.exitCodeValid, 'Jules: exit code is valid');
@@ -292,9 +293,9 @@ async function runE2E(): Promise<void> {
   // ──────────────────────────────────────────────────────────────────────
   //  STEP 6: SUCCESS — Report & Persist
   // ──────────────────────────────────────────────────────────────────────
-  console.log('\n' + '━'.repeat(60));
-  console.log('  STEP 6: SUCCESS');
-  console.log('━'.repeat(60));
+  SwarmTracer.getInstance().emitLog('\n' + '━'.repeat(60));
+  SwarmTracer.getInstance().emitLog('  STEP 6: SUCCESS');
+  SwarmTracer.getInstance().emitLog('━'.repeat(60));
 
   // Generate and save the final report
   store.saveSession('e2e-session-001', {
@@ -334,9 +335,9 @@ async function runE2E(): Promise<void> {
   assert(fs.existsSync(store.getLogPath('e2e.log')), 'E2E log persisted');
 
   // ── Print full transition timeline ────────────────────────────────────
-  console.log('\n' + '═'.repeat(60));
-  console.log('  SWARM STATE TRANSITION TIMELINE');
-  console.log('═'.repeat(60));
+  SwarmTracer.getInstance().emitLog('\n' + '═'.repeat(60));
+  SwarmTracer.getInstance().emitLog('  SWARM STATE TRANSITION TIMELINE');
+  SwarmTracer.getInstance().emitLog('═'.repeat(60));
 
   for (const t of transitions) {
     const icon = {
@@ -347,23 +348,23 @@ async function runE2E(): Promise<void> {
       'JULES VALIDATION': '🔍',
       'SUCCESS': '🏆',
     }[t.phase] || '▶';
-    console.log(`  ${icon} [${t.ts}] [${t.phase}] ${t.detail}`);
+    SwarmTracer.getInstance().emitLog(`  ${icon} [${t.ts}] [${t.phase}] ${t.detail}`);
   }
 
-  console.log('═'.repeat(60));
+  SwarmTracer.getInstance().emitLog('═'.repeat(60));
 
   // Cleanup
   try { fs.rmSync(tempDir, { recursive: true, force: true }); } catch {}
 
   // ── Summary ───────────────────────────────────────────────────────────
-  console.log('\n╔══════════════════════════════════════════════════════════╗');
-  console.log(`║  E2E RESULTS: ${passedTests}/${totalTests} assertions passed${' '.repeat(Math.max(0, 30 - `${passedTests}/${totalTests}`.length))}║`);
-  console.log('╚══════════════════════════════════════════════════════════╝\n');
+  SwarmTracer.getInstance().emitLog('\n╔══════════════════════════════════════════════════════════╗');
+  SwarmTracer.getInstance().emitLog(`║  E2E RESULTS: ${passedTests}/${totalTests} assertions passed${' '.repeat(Math.max(0, 30 - `${passedTests}/${totalTests}`.length))}║`);
+  SwarmTracer.getInstance().emitLog('╚══════════════════════════════════════════════════════════╝\n');
 
   if (passedTests < totalTests) { process.exit(1); } else { process.exit(0); }
 }
 
 runE2E().catch(err => {
-  console.error('Fatal E2E error:', err);
+  SwarmTracer.getInstance().emitLog('Fatal E2E error:', err);
   process.exit(1);
 });

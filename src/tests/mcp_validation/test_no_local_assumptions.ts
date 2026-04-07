@@ -1,5 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { SwarmTracer } from '../../telemetry/tracer.js';
 
 // ── Utilities ───────────────────────────────────────────────────────────────
 const PASS = '✅ PASS';
@@ -11,16 +12,16 @@ function assert(condition: boolean, testName: string, details?: string): void {
   totalTests++;
   if (condition) {
     passedTests++;
-    console.log(`    ${PASS} — ${testName}`);
+    SwarmTracer.getInstance().emitLog(`    ${PASS} — ${testName}`);
   } else {
-    console.log(`    ${FAIL} — ${testName}${details ? ` (${details})` : ''}`);
+    SwarmTracer.getInstance().emitLog(`    ${FAIL} — ${testName}${details ? ` (${details})` : ''}`);
   }
 }
 
 async function runTests(): Promise<void> {
-  console.log('\n╔══════════════════════════════════════════════════════════╗');
-  console.log('║  TEST D: Local Child Process Assumption Check            ║');
-  console.log('╚══════════════════════════════════════════════════════════╝\n');
+  SwarmTracer.getInstance().emitLog('\n╔══════════════════════════════════════════════════════════╗');
+  SwarmTracer.getInstance().emitLog('║  TEST D: Local Child Process Assumption Check            ║');
+  SwarmTracer.getInstance().emitLog('╚══════════════════════════════════════════════════════════╝\n');
 
   // We are checking that high-level orchestrator and swarm managers do NOT
   // rely on child_process to execute shell commands locally. Instead they
@@ -61,14 +62,14 @@ async function runTests(): Promise<void> {
 
   }
 
-  console.log('\n╔══════════════════════════════════════════════════════════╗');
-  console.log(`║  RESULTS: ${passedTests}/${totalTests} tests passed${' '.repeat(Math.max(0, 35 - `${passedTests}/${totalTests}`.length))}║`);
-  console.log('╚══════════════════════════════════════════════════════════╝\n');
+  SwarmTracer.getInstance().emitLog('\n╔══════════════════════════════════════════════════════════╗');
+  SwarmTracer.getInstance().emitLog(`║  RESULTS: ${passedTests}/${totalTests} tests passed${' '.repeat(Math.max(0, 35 - `${passedTests}/${totalTests}`.length))}║`);
+  SwarmTracer.getInstance().emitLog('╚══════════════════════════════════════════════════════════╝\n');
 
   if (passedTests < totalTests) { process.exit(1); } else { process.exit(0); }
 }
 
 runTests().catch(err => {
-  console.error('Fatal test error:', err);
+  SwarmTracer.getInstance().emitLog('Fatal test error:', err);
   process.exit(1);
 });

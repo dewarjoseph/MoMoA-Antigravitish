@@ -15,16 +15,17 @@ if (fs.existsSync(envPath)) {
 
 import { superviseMergeTool } from "../../tools/implementations/superviseMergeTool.js";
 import { ConcreteInfrastructureContext } from "../../services/infrastructure.js";
+import { SwarmTracer } from '../../telemetry/tracer.js';
 
 async function run() {
   const context = {
     geminiClient: undefined,
-    sendMessage: (msg: string) => console.log(msg),
+    sendMessage: (msg: string) => SwarmTracer.getInstance().emitLog(msg),
     infrastructureContext: new ConcreteInfrastructureContext(),
     activeResourceUris: []
   } as any;
 
-  console.log("Invoking SUPERVISE_MERGE tool on MoMoA-TestBed -> feature-fibonacci");
+  SwarmTracer.getInstance().emitLog("Invoking SUPERVISE_MERGE tool on MoMoA-TestBed -> feature-fibonacci");
   
   const result = await superviseMergeTool.execute({
       branch: "feature-fibonacci", // the branch we tested previously
@@ -32,8 +33,8 @@ async function run() {
       repoPath: "c:\\\\Users\\\\Joe\\\\source\\\\MoMoA-TestBed"
   }, context);
 
-  console.log("Merge Tool Output:");
-  console.log(result.result);
+  SwarmTracer.getInstance().emitLog("Merge Tool Output:");
+  SwarmTracer.getInstance().emitLog(result.result);
 }
 
 run().catch(console.error);

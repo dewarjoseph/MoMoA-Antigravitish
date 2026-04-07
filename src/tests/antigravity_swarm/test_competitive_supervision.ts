@@ -1,7 +1,8 @@
 import { MergeSupervisor } from "../../swarm/merge_supervisor.js";
+import { SwarmTracer } from '../../telemetry/tracer.js';
 
 async function run() {
-    console.log("Mocking dependencies for Competitive Supervisor Test...");
+    SwarmTracer.getInstance().emitLog("Mocking dependencies for Competitive Supervisor Test...");
     
     // Mock diffs
     const mockDiffs: Record<string, string> = {
@@ -12,7 +13,7 @@ async function run() {
 
     const mockSupervisor = new MergeSupervisor({
         sendOneShotMessage: async (prompt: string) => {
-            console.log("Analyzing Multi-Diff Prompt. Prompt size:", prompt.length);
+            SwarmTracer.getInstance().emitLog("Analyzing Multi-Diff Prompt. Prompt size:", prompt.length);
             // Simulate Gemini choosing the good diff
             return { text: JSON.stringify({ approved: true, winning_branch_name: "il-var-good", reasoning: "It fixed the math without syntax errors." }) };
         }
@@ -20,7 +21,7 @@ async function run() {
 
     // Override the runMcpCommand explicitly
     (mockSupervisor as any).runMcpCommand = async (cmd: string) => {
-        console.log(`[EXEC] ${cmd}`);
+        SwarmTracer.getInstance().emitLog(`[EXEC] ${cmd}`);
         if (cmd.includes("git diff")) {
             for (const b of Object.keys(mockDiffs)) {
                 if (cmd.includes(b)) return mockDiffs[b];
@@ -29,19 +30,19 @@ async function run() {
         return "success";
     };
 
-    console.log("\nRunning competitivelyEvaluateAndMerge...");
+    SwarmTracer.getInstance().emitLog("\nRunning competitivelyEvaluateAndMerge...");
     const result = await mockSupervisor.competitivelyEvaluateAndMerge("test-1", ["il-var-bad", "il-var-good", "il-var-meh"], "./", "Fix math");
 
-    console.log("\nResult:", result);
+    SwarmTracer.getInstance().emitLog("\nResult:", result);
     if (result.approved && result.winningBranch === "il-var-good") {
-        console.log("✅ Competitive Merge test passed.");
+        SwarmTracer.getInstance().emitLog("✅ Competitive Merge test passed.");
     } else {
-        console.log("❌ Competitive Merge test failed.");
+        SwarmTracer.getInstance().emitLog("❌ Competitive Merge test failed.");
         process.exit(1);
     }
 }
 
 run().catch(e => {
-    console.error(e);
+    SwarmTracer.getInstance().emitLog(e);
     process.exit(1);
 });

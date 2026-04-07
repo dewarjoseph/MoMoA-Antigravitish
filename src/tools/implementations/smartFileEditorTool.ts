@@ -133,8 +133,8 @@ export const smartFileEditorTool: MultiAgentTool = {
       // Attempt the edit directly. editFile() will log its own detailed results.
       const editResultString = editFile(
         filename,
-        String(parameterExtractionResult.params.toReplaceString), // TODO: handling of string[]
-        String(parameterExtractionResult.params.replacementString), // TODO: handling of string[]
+        parameterExtractionResult.params.toReplaceString as string | string[],
+        parameterExtractionResult.params.replacementString as string | string[],
         context
       );
 
@@ -472,39 +472,72 @@ function deleteFile(filename: string, context: MultiAgentToolContext) {
 }
 
 async function extractEditRequestParameters(stringToParse: string): Promise<ToolParsingResult> {
-  const toReplaceStart = `TO\u005fREPLACE:{`;
-  const toReplaceEnd = `}\nNEW\u005fTEXT`;
-  const replacementTextStart = `\nNEW\u005fTEXT:{`;
-  const replacementTextEnd = '}\nEND\u005fEDIT';
+  const toReplaceStart = `TO_REPLACE:{`;
+  const toReplaceEnd = `}\nNEW_TEXT`;
+  const replacementTextStart = `\nNEW_TEXT:{`;
+  const replacementTextEnd = '}\nEND_EDIT';
 
   if (!stringToParse.startsWith(toReplaceStart) || !stringToParse.includes(toReplaceEnd))
     return {
       success: false,
-      error: `The editing tool couldn't find the "TO\u005fREPLACE:{}" section that provides the string to replace. This is most commonly a syntax error caused by missing the surrounding curly braces ({}) or an additional colon (:). Please check your syntax carefully before trying again.`
+      error: `The editing tool couldn't find the "TO_REPLACE:{}" section that provides the string to replace. This is most commonly a syntax error caused by missing the surrounding curly braces ({}) or an additional colon (:). Please check your syntax carefully before trying again.`
     }
 
   if (!stringToParse.includes(replacementTextStart) || !stringToParse.includes(replacementTextEnd))
     return {
       success: false,
-      error: `The editing tool couldn't find the "NEW\u005fTEXT:{}" section that provides the replacement string to use. This is most commonly a syntax error caused by missing the surrounding curly braces ({}) or an additional colon (:). Please check your syntax carefully before trying again.`
+      error: `The editing tool couldn't find the "NEW_TEXT:{}" section that provides the replacement string to use. This is most commonly a syntax error caused by missing the surrounding curly braces ({}) or an additional colon (:). Please check your syntax carefully before trying again.`
     }
 
-  const endIndex = stringToParse.lastIndexOf(replacementTextEnd);
-  const fromToString = stringToParse.slice(toReplaceStart.length, endIndex);
+  const toReplaceStrings: string[] = [];
+  const replacementStrings: string[] = [];
 
-  const fromString = fromToString.split(toReplaceEnd, 2)[0];
-  const toString = fromToString.split(replacementTextStart, 2)[1];
-  
+  let searchString = stringToParse;
+  while (searchString.includes(toReplaceStart) && searchString.includes(replacementTextStart)) {
+    const toStartIdx = searchString.indexOf(toReplaceStart);
+    const toEndIdx = searchString.indexOf(toReplaceEnd, toStartIdx);
+    if (toEndIdx === -1) break;
+
+    const fromString = searchString.slice(toStartIdx + toReplaceStart.length, toEndIdx);
+
+    const newStartIdx = searchString.indexOf(replacementTextStart, toEndIdx);
+    
+    // Find where NEW_TEXT ends: it's either before the next TO_REPLACE:{ or before END_EDIT
+    const nextToReplaceIdx = searchString.indexOf(`}\nTO_REPLACE:{`, newStartIdx);
+    let newEndIdx;
+    if (nextToReplaceIdx !== -1) {
+      newEndIdx = nextToReplaceIdx;
+    } else {
+      newEndIdx = searchString.lastIndexOf(replacementTextEnd);
+    }
+
+    if (newEndIdx === -1 || newEndIdx <= newStartIdx) break;
+
+    const toString = searchString.slice(newStartIdx + replacementTextStart.length, newEndIdx);
+    
+    toReplaceStrings.push(fromString);
+    replacementStrings.push(toString);
+
+    searchString = searchString.slice(newEndIdx + 1);
+  }
+
+  if (toReplaceStrings.length === 0) {
+    return {
+      success: false,
+      error: `Failed to extract valid replacement blocks.`
+    };
+  }
+
   return {
     success: true,
     params: {
-      toReplaceString: fromString,
-      replacementString: toString,
+      toReplaceString: toReplaceStrings.length === 1 ? toReplaceStrings[0] : toReplaceStrings,
+      replacementString: replacementStrings.length === 1 ? replacementStrings[0] : replacementStrings,
     }
   }
 };
 
-function editFile(filename: string, fromString: string, toString: string, context: MultiAgentToolContext): string {
+function editFile(filename: string, fromString: string | string[], toString: string | string[], context: MultiAgentToolContext): string {
   let result = '';
   let worklog = '';
   let progressUpdate = '';
@@ -512,13 +545,17 @@ function editFile(filename: string, fromString: string, toString: string, contex
   const isBinary = context.binaryFileMap.has(filename);
   const fileExists = context.fileMap.has(filename);
 
-  const isOverwrite = fromString.trim() === 'OVERWRITE_ENTIRE_FILE';
-  const isAppend = fromString.trim() === 'APPEND';
-  const isEmptyReplace = fromString.trim() === '';
+  const fromArr = Array.isArray(fromString) ? fromString : [fromString];
+  const toArr = Array.isArray(toString) ? toString : [toString];
+
+  const firstFromStr = fromArr[0] || '';
+  const isOverwrite = firstFromStr.trim() === 'OVERWRITE_ENTIRE_FILE';
+  const isAppend = firstFromStr.trim() === 'APPEND';
+  const isEmptyReplace = firstFromStr.trim() === '';
 
   // Handle binary file logic first
   if (isBinary) {
-    if (isOverwrite && !toString) {
+    if (isOverwrite && (!toArr[0] || toArr[0].trim() === '')) {
         context.binaryFileMap.delete(filename);
         result = `'${filename}' has been successfully deleted.`;
         progressUpdate = result;
@@ -533,7 +570,7 @@ function editFile(filename: string, fromString: string, toString: string, contex
     progressUpdate = result;
     worklog = result;
   } else if (isOverwrite) {
-    if ((toString || '').trim() === '' && fileExists) {
+    if ((toArr[0] || '').trim() === '' && fileExists) {
         context.fileMap.delete(filename);
         result = `'${filename}' has been successfully deleted.`;
         progressUpdate = result;
@@ -544,89 +581,67 @@ function editFile(filename: string, fromString: string, toString: string, contex
              progressUpdate = result;
              worklog = result;
         } else {
-             context.fileMap.set(filename, toString);
+             context.fileMap.set(filename, toArr[0]);
              result = `The requested edit of \`${filename}\` has been successfully completed.`;
-             progressUpdate = `${result}\n\`\`\`\`\n${toString}\n\`\`\`\``;
+             progressUpdate = `${result}\n\`\`\`\`\n${toArr[0]}\n\`\`\`\``;
         }
     }
   } else if (isAppend) {
-    if (isLock) {
-      result = `The attempted edit of '${filename}' failed because it is a machine-generated lock file. Manual edits to lock files are prohibited.`;
-      progressUpdate = result;
-      worklog = result;
+    const appendStr = toArr[0] || '';
+    if (isLock && fileExists) {
+       result = `The attempted edit of '${filename}' failed because it is a machine-generated lock file. Manual edits to existing lock files are prohibited.`;
+       progressUpdate = result;
+       worklog = result;
     } else {
-      const existingFileContent = context.fileMap.get(filename) || '';
-      // Only add a newline if the file already has content
-      const newContent = existingFileContent ? `${existingFileContent}\n${toString}` : toString;
-      context.fileMap.set(filename, newContent);
-      result = `Successfully appended new text to the end of \`${filename}\`.`;
-      progressUpdate = `${result}\n\`\`\`\`\n+ ${toString}\n\`\`\`\``;
-      worklog = result;
+       const currentContent = context.fileMap.get(filename) || '';
+       const separator = (currentContent && !currentContent.endsWith('\n')) ? '\n' : '';
+       context.fileMap.set(filename, currentContent + separator + appendStr);
+       result = `The requested edit of \`${filename}\` has been successfully completed.`;
+       progressUpdate = `${result}\n\`\`\`\`\n${appendStr}\n\`\`\`\``;
     }
-  } else if (!fileExists && (fromString)) {
-      result = `The file '${filename}' doesn't exist, so I can't replace an existing string within it. Make sure '${filename}' is the right filename and if so, use the OVERWRITE_ENTIRE_FILE command to apply this edit.`;
-      worklog = `Smart Editor requested string replace from a file that doesn't exist.`; 
-      progressUpdate = worklog;
   } else {
-    if (isLock) {
-      result = `The attempted edit of '${filename}' failed because it is a machine-generated lock file. Manual edits to lock files are prohibited.`;
+    if (!fileExists) {
+      result = `The attempted edit of '${filename}' failed because the file doesn't exist. You must create the file first by using TO_REPLACE:{OVERWRITE_ENTIRE_FILE}.`;
       progressUpdate = result;
       worklog = result;
     } else {
-      const existingFileContent = context.fileMap.get(filename);
-      const replacementOptions = fuzzyReplace(existingFileContent ?? '', fromString, toString);
+      let currentContent = context.fileMap.get(filename)!;
+      let allModificationsDesc = '';
+      let failureStr = null;
 
-      if (!replacementOptions) {
-          let editFailureString = `The attempted edit of '${filename}' failed due to an error occuring while trying to replace the string.`;
-          worklog = editFailureString;
-          progressUpdate = editFailureString;
-          editFailureString += ` Please review the following content of '${filename}' carefully before attempting to make further edits:\n${existingFileContent}`;
-          result = editFailureString;
-      } else if (replacementOptions.error) {
-          const editFailureString = `The attempted edit of '${filename}' failed because: ${replacementOptions.error}.`;
-          worklog = editFailureString;
-          progressUpdate = editFailureString;
-          result = editFailureString + ` Please review the following content of '${filename}' carefully before attempting to make further edits:\n${existingFileContent}`;
-      } else if (replacementOptions.modifiedString !== undefined) {
-          const newFileContent = replacementOptions.modifiedString;
-          if ((newFileContent || '').trim() === '' && context.fileMap.has(filename)) {
-              context.fileMap.delete(filename);
-              result = `'${filename}' has been successfully deleted.`;
-              progressUpdate = result;
-          } else {
-              context.fileMap.set(filename, newFileContent);
-              result = `The requested edit of '${filename}' has been successfully completed.`;
-              worklog = result;
+      for (let i = 0; i < fromArr.length; i++) {
+        const fStr = fromArr[i];
+        const tStr = toArr[i] || '';
+        const fuzzyResult = fuzzyReplace(currentContent, fStr, tStr);
 
-              try {
-                const diff = createTwoFilesPatch(
-                  `a/${filename}`,
-                  `b/${filename}`,
-                  existingFileContent ?? "",
-                  newFileContent,
-                  '',
-                  '',
-                  { context: 3 }
-                );
+        if (fuzzyResult.error) {
+          failureStr = `The attempted edit of '${filename}' failed on block ${i + 1}:\n${fuzzyResult.error}`;
+          break;
+        } else if (fuzzyResult.multipleMatches) {
+          const matchContexts = fuzzyResult.multipleMatches.map(c => `\`\`\`\`\n${c}\n\`\`\`\``).join('\n---\n');
+          failureStr = `The attempted edit of '${filename}' failed on block ${i + 1} because there were multiple potential matches for the text provided. Please provide more surrounding lines to create a unique match.\n${matchContexts}`;
+          break;
+        }
+        
+        currentContent = fuzzyResult.modifiedString!;
+        allModificationsDesc += `Block ${i + 1} processed. `;
+      }
 
-                const cleanPatch = diff
-                  .split('\n')
-                  .filter(line => !line.startsWith('==================================================================='))
-                  .join('\n');
-
-                progressUpdate = `${result}\n\`\`\`\`\n${cleanPatch}\n\`\`\`\``;
-              } catch { progressUpdate = `${result}\n\`\`\`\`\n${newFileContent}\n\`\`\`\`` }
-          }
-      } else if (replacementOptions.multipleMatches) { 
-          worklog = `Smart Editor: The fuzzy matcher found ${replacementOptions.multipleMatches.length} possible matches for the replacement string requests for '${filename}'. Asking the Smart Replace tool to disambiguate.`;
-          progressUpdate = `found ${replacementOptions.multipleMatches.length} possible matches. Disambiguating.`;
-          result = `There were ${replacementOptions.multipleMatches.length} potential matches for the string you asked to replace in '${filename}'. I can only change one instance of a matching string at a time, so each request must represent a unique string. As a result, NO edit has been made to the file. Here are each of the potential matches, with additional surrounding anchor text to help disambiguate them and ensure a unique replacement string. Please review the matching strings carefully, considering the intention of your edit, and try again using additional anchor text to identify the single specific string you want to replace with this edit. If you want to replace multiple matching string, you will need to do multiple edits.`;
-          let optionNumber = 1;
-          replacementOptions.multipleMatches.forEach((option: any) => {
-            result += `\n**Possible Matching Replacement String ${optionNumber}:**\n${option}`;
-            optionNumber++;
-          });
-          result = result.trim();
+      if (failureStr) {
+        result = failureStr;
+        progressUpdate = failureStr;
+        worklog = failureStr;
+      } else {
+        context.fileMap.set(filename, currentContent);
+        // Provide the diff back to the transcript manager for learning context
+        const patchStr = createTwoFilesPatch(
+          filename, filename,
+          context.fileMap.get(filename)!, currentContent,
+          'Original Content', 'Modified Content',
+          { context: 3 }
+        );
+        result = `The requested edit of \`${filename}\` has been successfully completed for ${fromArr.length} block(s). Here is the unified diff:\n\`\`\`diff\n${patchStr}\n\`\`\``;
+        progressUpdate = `The requested edit of \`${filename}\` has been successfully completed for ${fromArr.length} block(s).`;
       }
     }
   }

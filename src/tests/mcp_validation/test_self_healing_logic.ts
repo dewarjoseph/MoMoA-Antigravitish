@@ -17,6 +17,7 @@
 import { SelfHealingRunner, SelfHealingConfig } from '../../mcp/selfHealingRunner.js';
 import type { McpClientManager, DiscoveredMcpTool } from '../../mcp/mcpClientManager.js';
 import type { MultiAgentToolContext, MultiAgentToolResult } from '../../momoa_core/types.js';
+import { SwarmTracer } from '../../telemetry/tracer.js';
 
 // ── Utilities ───────────────────────────────────────────────────────────────
 
@@ -29,9 +30,9 @@ function assert(condition: boolean, testName: string, details?: string): void {
   totalTests++;
   if (condition) {
     passedTests++;
-    console.log(`  ${PASS} — ${testName}`);
+    SwarmTracer.getInstance().emitLog(`  ${PASS} — ${testName}`);
   } else {
-    console.log(`  ${FAIL} — ${testName}${details ? ` (${details})` : ''}`);
+    SwarmTracer.getInstance().emitLog(`  ${FAIL} — ${testName}${details ? ` (${details})` : ''}`);
   }
 }
 
@@ -127,12 +128,12 @@ function createMockContext(): MultiAgentToolContext {
 // ── Tests ───────────────────────────────────────────────────────────────────
 
 async function runTests(): Promise<void> {
-  console.log('\n╔══════════════════════════════════════════════════════════╗');
-  console.log('║  TEST B: Self-Healing Orchestrator Retry Logic           ║');
-  console.log('╚══════════════════════════════════════════════════════════╝\n');
+  SwarmTracer.getInstance().emitLog('\n╔══════════════════════════════════════════════════════════╗');
+  SwarmTracer.getInstance().emitLog('║  TEST B: Self-Healing Orchestrator Retry Logic           ║');
+  SwarmTracer.getInstance().emitLog('╚══════════════════════════════════════════════════════════╝\n');
 
   // ── Test 1: Error Pattern Detection ─────────────────────────────────────
-  console.log('── Phase 1: Error Pattern Detection ──');
+  SwarmTracer.getInstance().emitLog('── Phase 1: Error Pattern Detection ──');
 
   const runner = new SelfHealingRunner({ enabled: true, maxRetries: 3, mcpManager: null });
 
@@ -152,7 +153,7 @@ async function runTests(): Promise<void> {
   assert(!isRecoverable('All tests passed.'), 'Does not flag clean output');
 
   // ── Test 2: Error Summary Extraction ──────────────────────────────────
-  console.log('\n── Phase 2: Error Summary Extraction ──');
+  SwarmTracer.getInstance().emitLog('\n── Phase 2: Error Summary Extraction ──');
 
   const extractSummary = (text: string) =>
     (runner as any).extractErrorSummary(text);
@@ -167,7 +168,7 @@ NameError: name 'undefined_var' is not defined
 Hello World`;
 
   const summary1 = extractSummary(stderrOutput);
-  console.log(`  [INFO] Extracted summary: "${summary1.substring(0, 100)}..."`);
+  SwarmTracer.getInstance().emitLog(`  [INFO] Extracted summary: "${summary1.substring(0, 100)}..."`);
   assert(summary1.includes('NameError'), 'Extracts NameError from stderr section');
   assert(summary1.includes('undefined_var'), 'Preserves variable name in summary');
 
@@ -176,7 +177,7 @@ Hello World`;
   assert(summary2.includes('Error:'), 'Extracts error line from simple output');
 
   // ── Test 3: Reasoning Prompt Construction ─────────────────────────────
-  console.log('\n── Phase 3: Reasoning Prompt Construction ──');
+  SwarmTracer.getInstance().emitLog('\n── Phase 3: Reasoning Prompt Construction ──');
 
   const buildPrompt = (toolName: string, params: Record<string, unknown>, error: string, attempt: number) =>
     (runner as any).buildReasoningPrompt(toolName, params, error, attempt);
@@ -188,14 +189,14 @@ Hello World`;
     2
   );
 
-  console.log(`  [INFO] Generated prompt (first 200 chars): "${prompt.substring(0, 200)}..."`);
+  SwarmTracer.getInstance().emitLog(`  [INFO] Generated prompt (first 200 chars): "${prompt.substring(0, 200)}..."`);
   assert(prompt.includes('attempt 2'), 'Includes attempt number');
   assert(prompt.includes('RUN{'), 'Includes tool name');
   assert(prompt.includes('NameError'), 'Includes error text');
   assert(prompt.includes('script.py'), 'Includes file names');
 
   // ── Test 4: Fix Application Strategies ────────────────────────────────
-  console.log('\n── Phase 4: Fix Application Strategies ──');
+  SwarmTracer.getInstance().emitLog('\n── Phase 4: Fix Application Strategies ──');
 
   const mockCtx = createMockContext();
 
@@ -221,7 +222,7 @@ Hello World`;
   assert((depParams['dependencies'] as string).includes('pandas'), 'Dependency added');
 
   // ── Test 5: Full Retry Loop Simulation ────────────────────────────────
-  console.log('\n── Phase 5: Full Retry Loop (Mocked) ──');
+  SwarmTracer.getInstance().emitLog('\n── Phase 5: Full Retry Loop (Mocked) ──');
 
   // Create a runner with mock manager
   const mockManager = createMockManager({
@@ -251,12 +252,12 @@ Hello World`;
     'How do I fix this error?',
     mockManager
   );
-  console.log(`  [INFO] Sequential-thinking response: "${thinkResult.substring(0, 100)}..."`);
+  SwarmTracer.getInstance().emitLog(`  [INFO] Sequential-thinking response: "${thinkResult.substring(0, 100)}..."`);
   assert(thinkResult.length > 0, 'callSequentialThinking returned a response');
   assert(thinkResult.includes('undefined_var'), 'Response contains relevant fix content');
 
   // ── Test 6: MAX_RETRIES Ceiling ───────────────────────────────────────
-  console.log('\n── Phase 6: MAX_RETRIES Ceiling ──');
+  SwarmTracer.getInstance().emitLog('\n── Phase 6: MAX_RETRIES Ceiling ──');
 
   const limitedRunner = new SelfHealingRunner({
     enabled: true,
@@ -272,7 +273,7 @@ Hello World`;
   );
 
   // Verify HEALABLE_TOOLS set
-  console.log('\n── Phase 7: Healable Tool Registration ──');
+  SwarmTracer.getInstance().emitLog('\n── Phase 7: Healable Tool Registration ──');
   assert(
     (runner as any).isRecoverableError('Error: Process exited with code 1'),
     'Runner detects recoverable errors for the retry loop'
@@ -286,14 +287,14 @@ Hello World`;
   );
 
   // ── Summary ───────────────────────────────────────────────────────────
-  console.log('\n╔══════════════════════════════════════════════════════════╗');
-  console.log(`║  RESULTS: ${passedTests}/${totalTests} tests passed${' '.repeat(Math.max(0, 35 - `${passedTests}/${totalTests}`.length))}║`);
-  console.log('╚══════════════════════════════════════════════════════════╝\n');
+  SwarmTracer.getInstance().emitLog('\n╔══════════════════════════════════════════════════════════╗');
+  SwarmTracer.getInstance().emitLog(`║  RESULTS: ${passedTests}/${totalTests} tests passed${' '.repeat(Math.max(0, 35 - `${passedTests}/${totalTests}`.length))}║`);
+  SwarmTracer.getInstance().emitLog('╚══════════════════════════════════════════════════════════╝\n');
 
   if (passedTests < totalTests) { process.exit(1); } else { process.exit(0); }
 }
 
 runTests().catch(err => {
-  console.error('Fatal test error:', err);
+  SwarmTracer.getInstance().emitLog('Fatal test error:', err);
   process.exit(1);
 });

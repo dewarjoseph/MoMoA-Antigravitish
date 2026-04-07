@@ -19,6 +19,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import { spawn } from 'node:child_process';
+import { SwarmTracer } from '../../telemetry/tracer.js';
 
 // ── Utilities ───────────────────────────────────────────────────────────────
 
@@ -31,9 +32,9 @@ function assert(condition: boolean, testName: string, details?: string): void {
   totalTests++;
   if (condition) {
     passedTests++;
-    console.log(`    ${PASS} — ${testName}`);
+    SwarmTracer.getInstance().emitLog(`    ${PASS} — ${testName}`);
   } else {
-    console.log(`    ${FAIL} — ${testName}${details ? ` (${details})` : ''}`);
+    SwarmTracer.getInstance().emitLog(`    ${FAIL} — ${testName}${details ? ` (${details})` : ''}`);
   }
 }
 
@@ -42,7 +43,7 @@ function timestamp(): string {
 }
 
 function log(phase: string, msg: string): void {
-  console.log(`  [${timestamp()}] [${phase}] ${msg}`);
+  SwarmTracer.getInstance().emitLog(`  [${timestamp()}] [${phase}] ${msg}`);
 }
 
 // ── Script Execution Helper ─────────────────────────────────────────────────
@@ -270,18 +271,18 @@ print(f"Average: {average}")
 // ── Main E2E Loop ───────────────────────────────────────────────────────────
 
 async function runE2ECrucible(): Promise<void> {
-  console.log('\n╔══════════════════════════════════════════════════════════╗');
-  console.log('║  E2E CRUCIBLE: Self-Healing Integration Test             ║');
-  console.log('║  "Zero-Human Autonomous Error Recovery"                  ║');
-  console.log('╚══════════════════════════════════════════════════════════╝\n');
+  SwarmTracer.getInstance().emitLog('\n╔══════════════════════════════════════════════════════════╗');
+  SwarmTracer.getInstance().emitLog('║  E2E CRUCIBLE: Self-Healing Integration Test             ║');
+  SwarmTracer.getInstance().emitLog('║  "Zero-Human Autonomous Error Recovery"                  ║');
+  SwarmTracer.getInstance().emitLog('╚══════════════════════════════════════════════════════════╝\n');
 
   const MAX_RETRIES = 5;
 
   for (const scenario of SCENARIOS) {
-    console.log(`\n${'━'.repeat(60)}`);
-    console.log(`  🧪 Scenario: ${scenario.name}`);
-    console.log(`  📝 ${scenario.description}`);
-    console.log(`${'━'.repeat(60)}\n`);
+    SwarmTracer.getInstance().emitLog(`\n${'━'.repeat(60)}`);
+    SwarmTracer.getInstance().emitLog(`  🧪 Scenario: ${scenario.name}`);
+    SwarmTracer.getInstance().emitLog(`  📝 ${scenario.description}`);
+    SwarmTracer.getInstance().emitLog(`${'━'.repeat(60)}\n`);
 
     // Create temp workspace
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-crucible-'));
@@ -343,16 +344,16 @@ async function runE2ECrucible(): Promise<void> {
       currentScript = fix.patchedScript;
       fs.writeFileSync(scriptPath, currentScript, 'utf8');
       log('PATCHING', `Applied fix. Updated script:`);
-      console.log(currentScript.split('\n').map(l => '      │ ' + l).join('\n'));
+      SwarmTracer.getInstance().emitLog(currentScript.split('\n').map(l => '      │ ' + l).join('\n'));
       timeline.push(`[RE-EXECUTION] Queued after patch`);
     }
 
     // ── Results for this scenario ──────────────────────────────────────
-    console.log(`\n  ┌─── Timeline ───────────────────────────────────────┐`);
+    SwarmTracer.getInstance().emitLog(`\n  ┌─── Timeline ───────────────────────────────────────┐`);
     for (const event of timeline) {
-      console.log(`  │  ${event}`);
+      SwarmTracer.getInstance().emitLog(`  │  ${event}`);
     }
-    console.log(`  └──────────────────────────────────────────────────────┘\n`);
+    SwarmTracer.getInstance().emitLog(`  └──────────────────────────────────────────────────────┘\n`);
 
     // Assertions
     assert(success, `Scenario "${scenario.name}" recovered successfully`);
@@ -364,7 +365,7 @@ async function runE2ECrucible(): Promise<void> {
         finalResult.stdout.includes(scenario.expectedOutput),
         `Output contains expected value "${scenario.expectedOutput}"`
       );
-      console.log(`    📊 Final output: ${finalResult.stdout.trim()}`);
+      SwarmTracer.getInstance().emitLog(`    📊 Final output: ${finalResult.stdout.trim()}`);
     }
 
     // Cleanup
@@ -372,15 +373,15 @@ async function runE2ECrucible(): Promise<void> {
   }
 
   // ── Grand Summary ───────────────────────────────────────────────────────
-  console.log('\n' + '═'.repeat(60));
-  console.log(`\n╔══════════════════════════════════════════════════════════╗`);
-  console.log(`║  E2E CRUCIBLE RESULTS: ${passedTests}/${totalTests} assertions passed${' '.repeat(Math.max(0, 25 - `${passedTests}/${totalTests}`.length))}║`);
-  console.log(`╚══════════════════════════════════════════════════════════╝\n`);
+  SwarmTracer.getInstance().emitLog('\n' + '═'.repeat(60));
+  SwarmTracer.getInstance().emitLog(`\n╔══════════════════════════════════════════════════════════╗`);
+  SwarmTracer.getInstance().emitLog(`║  E2E CRUCIBLE RESULTS: ${passedTests}/${totalTests} assertions passed${' '.repeat(Math.max(0, 25 - `${passedTests}/${totalTests}`.length))}║`);
+  SwarmTracer.getInstance().emitLog(`╚══════════════════════════════════════════════════════════╝\n`);
 
   if (passedTests < totalTests) { process.exit(1); } else { process.exit(0); }
 }
 
 runE2ECrucible().catch(err => {
-  console.error('Fatal E2E error:', err);
+  SwarmTracer.getInstance().emitLog('Fatal E2E error:', err);
   process.exit(1);
 });

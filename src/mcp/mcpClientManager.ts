@@ -60,6 +60,19 @@ export class McpClientManager {
   private onToolsChanged: (() => Promise<void>) | null = null;
   private _isInitialized = false;
   private _isShuttingDown = false;
+  private _connectionMutex: Promise<void> = Promise.resolve();
+
+  private async runWithLock<T>(fn: () => Promise<T>): Promise<T> {
+    const previous = this._connectionMutex;
+    let release: () => void;
+    this._connectionMutex = new Promise(r => { release = r; });
+    await previous.catch(() => {});
+    try {
+      return await fn();
+    } finally {
+      release!();
+    }
+  }
 
   constructor(configPath: string) {
     this.configPath = path.resolve(configPath);
@@ -103,9 +116,10 @@ export class McpClientManager {
    * Initialize: read config, connect to all servers, start file watcher.
    */
   async initFromConfig(): Promise<void> {
-    const config = this.readConfigFile();
-    if (!config) {
-      process.stderr.write(`[MCP-Manager] No config found at ${this.configPath}, starting with zero MCP servers.\n`);
+    return this.runWithLock(async () => {
+      const config = this.readConfigFile();
+      if (!config) {
+        process.stderr.write(`[MCP-Manager] No config found at ${this.configPath}, starting with zero MCP servers.\n`);
       this._isInitialized = true;
       return;
     }
@@ -131,9 +145,10 @@ export class McpClientManager {
     // Start watching for config changes (hot-reload)
     this.startWatcher();
 
-    if (this.onToolsChanged) {
-      await this.onToolsChanged();
-    }
+      if (this.onToolsChanged) {
+        await this.onToolsChanged();
+      }
+    });
   }
 
   /**
@@ -142,13 +157,15 @@ export class McpClientManager {
   async shutdown(): Promise<void> {
     this._isShuttingDown = true;
     this.stopWatcher();
-    const disconnects = [...this.connections.keys()].map(name =>
+    return this.runWithLock(async () => {
+      const disconnects = [...this.connections.keys()].map(name =>
       this.disconnectServer(name).catch(err =>
         process.stderr.write(`[MCP-Manager] Error disconnecting '${name}': ${err}\n`)
       )
     );
-    await Promise.all(disconnects);
-    process.stderr.write('[MCP-Manager] All connections shut down.\n');
+      await Promise.all(disconnects);
+      process.stderr.write('[MCP-Manager] All connections shut down.\n');
+    });
   }
 
   // ─── Connection Management ──────────────────────────────────────────────
@@ -435,7 +452,8 @@ export class McpClientManager {
    */
   async reload(): Promise<void> {
     if (this._isShuttingDown) return;
-    const config = this.readConfigFile();
+    return this.runWithLock(async () => {
+      const config = this.readConfigFile();
     if (!config) {
       process.stderr.write('[MCP-Manager] Config file not found during reload, disconnecting all.\n');
       await this.shutdown();
@@ -468,9 +486,10 @@ export class McpClientManager {
       }
     }
 
-    if (this.onToolsChanged) {
-      await this.onToolsChanged();
-    }
+      if (this.onToolsChanged) {
+        await this.onToolsChanged();
+      }
+    });
   }
 
   // ─── Internal Helpers ───────────────────────────────────────────────────
@@ -554,8 +573,9 @@ export class McpClientManager {
    * Spawns the server, connects, discovers tools, and notifies the registry.
    */
   async hotPlugServer(name: string, config: McpServerConfig): Promise<string[]> {
-    // Disconnect if already connected
-    if (this.connections.has(name)) {
+    return this.runWithLock(async () => {
+      // Disconnect if already connected
+      if (this.connections.has(name)) {
       await this.disconnectServer(name);
     }
 
@@ -570,12 +590,13 @@ export class McpClientManager {
     const toolNames = [...conn.tools.keys()];
     process.stderr.write(`[MCP-Manager] Hot-plug complete: '${name}' with ${toolNames.length} tool(s)\n`);
 
-    // Notify the onToolsChanged callback if registered
-    if (this.onToolsChanged) {
-      this.onToolsChanged();
-    }
+      // Notify the onToolsChanged callback if registered
+      if (this.onToolsChanged) {
+        this.onToolsChanged();
+      }
 
-    return toolNames;
+      return toolNames;
+    });
   }
 
   /**
@@ -583,13 +604,15 @@ export class McpClientManager {
    * Gracefully disconnects and removes all tools from the pool.
    */
   async hotUnplugServer(name: string): Promise<void> {
-    process.stderr.write(`[MCP-Manager] Hot-unplugging server '${name}'...\n`);
-    await this.disconnectServer(name);
+    return this.runWithLock(async () => {
+      process.stderr.write(`[MCP-Manager] Hot-unplugging server '${name}'...\n`);
+      await this.disconnectServer(name);
 
-    // Notify the onToolsChanged callback
-    if (this.onToolsChanged) {
-      this.onToolsChanged();
-    }
+      // Notify the onToolsChanged callback
+      if (this.onToolsChanged) {
+        this.onToolsChanged();
+      }
+    });
   }
 
   /**

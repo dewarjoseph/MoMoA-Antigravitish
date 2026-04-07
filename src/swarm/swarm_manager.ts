@@ -45,6 +45,11 @@ export class SwarmManager {
       return this.dispatchFromPromptDir(opts);
     }
 
+    // If a batch TODO.md file is provided, read line by line
+    if (opts.todoFile && fs.existsSync(opts.todoFile)) {
+      return this.dispatchFromTodoFile(opts);
+    }
+
     // Otherwise, generate prompts from strategies
     let agentIndex = 0;
     for (const strategy of strategies) {
@@ -135,6 +140,61 @@ export class SwarmManager {
 
         await new Promise(resolve => setTimeout(resolve, 1500));
       }
+    }
+
+    return dispatched;
+  }
+
+  /**
+   * Dispatch from a TODO.md newline-separated prompt file (enabling batch generation).
+   * Each non-empty line becomes one prompt, dispatched serially.
+   */
+  private async dispatchFromTodoFile(opts: SwarmDispatchOptions): Promise<string[]> {
+    const todoFile = opts.todoFile!;
+    const content = fs.readFileSync(todoFile, 'utf-8');
+    // Discard empty lines
+    const prompts = content.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+    const dispatched: string[] = [];
+
+    this.log(`=== Dispatching from TODO file: ${todoFile} ===`);
+    this.log(`  Lines found: ${prompts.length}`);
+
+    // If --count was passed, limit the number of dispatches to count,
+    // otherwise dispatch exactly one worker per line.
+    const maxAgents = Math.min(opts.count, prompts.length);
+
+    for (let i = 0; i < maxAgents; i++) {
+        const promptLine = prompts[i];
+        let strategy = `batch-prompt-${i + 1}`;
+        
+        // Extract optional strategy tag from the line if it starts with [StrategyName]
+        const match = promptLine.match(/^\[(.*?)\]/);
+        if (match) strategy = match[1].replace(/ /g, '-').replace(/[^a-zA-Z0-9-]/g, '');
+
+        try {
+          const stdout = await this.spawnJulesWorker(promptLine, opts.repo, opts.branch);
+          const sessionId = this.parseSessionId(stdout, `todo-${i + 1}`);
+          
+          this.store.saveSession(sessionId, {
+            id: sessionId,
+            state: 'AWAITING_REVIEW',
+            strategy,
+            agentNumber: i + 1,
+            pulled: false,
+            approved: false,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          });
+
+          dispatched.push(sessionId);
+          this.log(`  [OK] variant#${i + 1} dispatched (Session ID: ${sessionId})`);
+        } catch (err) {
+          const errorMsg = err instanceof Error ? err.message : String(err);
+          this.log(`  [FAIL] variant#${i + 1}: ${errorMsg}`);
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 1500));
     }
 
     return dispatched;
@@ -259,7 +319,8 @@ Strategy-specific instructions will be injected from the prompt directory if ava
   }
 
   private log(msg: string): void {
-    console.log(msg);
+    // Process stderr is safe for MCP
+    process.stderr.write(`[Swarm] ${msg}\n`);
     this.store.appendLog('swarm_dispatch.log', msg);
   }
 }

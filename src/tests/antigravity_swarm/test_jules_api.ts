@@ -14,24 +14,25 @@ if (fs.existsSync(envPath)) {
 }
 
 import { JulesClient } from "../../services/julesClient.js";
+import { SwarmTracer } from '../../telemetry/tracer.js';
 
 async function run() {
-  console.log("Initializing Jules REST API Client natively...");
+  SwarmTracer.getInstance().emitLog("Initializing Jules REST API Client natively...");
   const client = new JulesClient();
 
-  console.log("\\n1. Testing: List Sources...");
+  SwarmTracer.getInstance().emitLog("\\n1. Testing: List Sources...");
   try {
     const sources = await client.listSources(3);
-    console.log("Success! Found sources:");
-    sources.sources?.forEach((s: any) => console.log(`   - ${s.name} (${s.githubRepo?.owner}/${s.githubRepo?.repo})`));
+    SwarmTracer.getInstance().emitLog("Success! Found sources:");
+    sources.sources?.forEach((s: any) => SwarmTracer.getInstance().emitLog(`   - ${s.name} (${s.githubRepo?.owner}/${s.githubRepo?.repo})`));
   } catch (e: any) {
-    console.error("List Sources failed:", e.message);
+    SwarmTracer.getInstance().emitLog("List Sources failed:", e.message);
   }
 
-  console.log("\\n2. Testing: Tool Abstractions Native Parse...");
+  SwarmTracer.getInstance().emitLog("\\n2. Testing: Tool Abstractions Native Parse...");
   import("../../tools/implementations/julesCreateSessionTool.js").then(({ julesCreateSessionTool }) => {
-    console.log(`Tool Loaded: ${julesCreateSessionTool.displayName}`);
-    console.log(`Command key: ${julesCreateSessionTool.name}`);
+    SwarmTracer.getInstance().emitLog(`Tool Loaded: ${julesCreateSessionTool.displayName}`);
+    SwarmTracer.getInstance().emitLog(`Command key: ${julesCreateSessionTool.name}`);
   });
 }
 

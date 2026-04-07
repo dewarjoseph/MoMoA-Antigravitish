@@ -161,6 +161,15 @@ export class SwarmTracer {
     span.tokensReceived += received;
   }
 
+  /**
+   * Log a general message through the telemetry pipeline (bypassing stdout).
+   * Ensures MCP protocol compatibility by routing to stderr.
+   */
+  emitLog(...args: any[]): void {
+    const message = args.map(a => typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)).join(' ');
+    process.stderr.write(`${message}\n`);
+  }
+
   // ─── Query ──────────────────────────────────────────────────────────────
 
   /**

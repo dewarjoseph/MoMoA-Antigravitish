@@ -42,6 +42,7 @@ export interface SwarmDispatchOptions {
   repo: string;
   branch: string;
   promptDir?: string;
+  todoFile?: string;
   strategies?: string[];
 }
 

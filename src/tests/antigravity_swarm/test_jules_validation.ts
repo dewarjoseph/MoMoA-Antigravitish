@@ -25,6 +25,7 @@ import { LocalStore } from '../../persistence/local_store.js';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
+import { SwarmTracer } from '../../telemetry/tracer.js';
 
 // ── Utilities ───────────────────────────────────────────────────────────────
 
@@ -37,9 +38,9 @@ function assert(condition: boolean, testName: string, details?: string): void {
   totalTests++;
   if (condition) {
     passedTests++;
-    console.log(`    ${PASS} — ${testName}`);
+    SwarmTracer.getInstance().emitLog(`    ${PASS} — ${testName}`);
   } else {
-    console.log(`    ${FAIL} — ${testName}${details ? ` (${details})` : ''}`);
+    SwarmTracer.getInstance().emitLog(`    ${FAIL} — ${testName}${details ? ` (${details})` : ''}`);
   }
 }
 
@@ -140,10 +141,10 @@ function julesValidationReasoning(artifact: AgentArtifact): JulesValidationResul
 // ── Tests ───────────────────────────────────────────────────────────────────
 
 async function runTests(): Promise<void> {
-  console.log('\n╔══════════════════════════════════════════════════════════╗');
-  console.log('║  TEST C: Jules Validation Handoff                       ║');
-  console.log('║  "Agent → Jules Worker → Report Writer Pipeline"        ║');
-  console.log('╚══════════════════════════════════════════════════════════╝\n');
+  SwarmTracer.getInstance().emitLog('\n╔══════════════════════════════════════════════════════════╗');
+  SwarmTracer.getInstance().emitLog('║  TEST C: Jules Validation Handoff                       ║');
+  SwarmTracer.getInstance().emitLog('║  "Agent → Jules Worker → Report Writer Pipeline"        ║');
+  SwarmTracer.getInstance().emitLog('╚══════════════════════════════════════════════════════════╝\n');
 
   // Setup temp workspace
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'jules-validation-'));
@@ -152,21 +153,21 @@ async function runTests(): Promise<void> {
   const timeline: string[] = [];
 
   // ── Phase 1: Agent Artifact Generation ─────────────────────────────────
-  console.log('── Phase 1: Agent Artifact Generation ──');
+  SwarmTracer.getInstance().emitLog('── Phase 1: Agent Artifact Generation ──');
 
   const artifact = createMockAgentArtifact();
   timeline.push(`[AGENT_COMPLETE] Exit code ${artifact.exitCode} in ${artifact.executionTimeMs}ms`);
 
-  console.log(`    [${ts()}] Agent completed:`);
-  console.log(`      Prompt:    "${artifact.prompt.substring(0, 80)}..."`);
-  console.log(`      Exit code: ${artifact.exitCode}`);
-  console.log(`      Stdout:    "${artifact.stdout.split('\n')[0]}..."`);
+  SwarmTracer.getInstance().emitLog(`    [${ts()}] Agent completed:`);
+  SwarmTracer.getInstance().emitLog(`      Prompt:    "${artifact.prompt.substring(0, 80)}..."`);
+  SwarmTracer.getInstance().emitLog(`      Exit code: ${artifact.exitCode}`);
+  SwarmTracer.getInstance().emitLog(`      Stdout:    "${artifact.stdout.split('\n')[0]}..."`);
 
   assert(artifact.exitCode === 0, 'Agent artifact has exit code 0');
   assert(artifact.stdout.includes('12586269025'), 'Agent produced correct Fibonacci result');
 
   // ── Phase 2: SwarmManager Dispatch Logic ──────────────────────────────
-  console.log('\n── Phase 2: SwarmManager Configuration ──');
+  SwarmTracer.getInstance().emitLog('\n── Phase 2: SwarmManager Configuration ──');
 
   const manager = new SwarmManager(store, {} as any);
 
@@ -178,8 +179,8 @@ async function runTests(): Promise<void> {
   ]);
 
   const batchContent = fs.readFileSync(batchPath, 'utf8');
-  console.log(`    [${ts()}] Generated ${taskCount} batch prompts`);
-  console.log(`    [INFO] Batch file:\n${batchContent.split('\n').map(l => '      ' + l).join('\n')}`);
+  SwarmTracer.getInstance().emitLog(`    [${ts()}] Generated ${taskCount} batch prompts`);
+  SwarmTracer.getInstance().emitLog(`    [INFO] Batch file:\n${batchContent.split('\n').map(l => '      ' + l).join('\n')}`);
 
   assert(taskCount === 3, `Generated 3 batch prompts (got: ${taskCount})`);
   assert(batchContent.includes('Validate artifact'), 'Batch contains validation task');
@@ -188,18 +189,18 @@ async function runTests(): Promise<void> {
   timeline.push(`[JULES_DISPATCH] ${taskCount} workers queued`);
 
   // ── Phase 3: Jules Validation Reasoning ───────────────────────────────
-  console.log('\n── Phase 3: Jules Validation Reasoning ──');
+  SwarmTracer.getInstance().emitLog('\n── Phase 3: Jules Validation Reasoning ──');
   timeline.push(`[JULES_VALIDATE] Starting validation reasoning`);
 
   const validation = julesValidationReasoning(artifact);
 
-  console.log(`    [${ts()}] Validation result:`);
-  console.log(`      Status:     ${validation.status}`);
-  console.log(`      Confidence: ${(validation.confidenceScore * 100).toFixed(0)}%`);
-  console.log(`      Reasoning:  ${validation.reasoning}`);
-  console.log(`      Met: ${validation.requirementsMet.join(', ')}`);
+  SwarmTracer.getInstance().emitLog(`    [${ts()}] Validation result:`);
+  SwarmTracer.getInstance().emitLog(`      Status:     ${validation.status}`);
+  SwarmTracer.getInstance().emitLog(`      Confidence: ${(validation.confidenceScore * 100).toFixed(0)}%`);
+  SwarmTracer.getInstance().emitLog(`      Reasoning:  ${validation.reasoning}`);
+  SwarmTracer.getInstance().emitLog(`      Met: ${validation.requirementsMet.join(', ')}`);
   if (validation.requirementsMissed.length > 0) {
-    console.log(`      Missed: ${validation.requirementsMissed.join(', ')}`);
+    SwarmTracer.getInstance().emitLog(`      Missed: ${validation.requirementsMissed.join(', ')}`);
   }
 
   assert(validation.status === 'VALIDATED', 'Jules validated the artifact');
@@ -210,7 +211,7 @@ async function runTests(): Promise<void> {
   timeline.push(`[JULES_VALIDATE] ${validation.status} @ ${(validation.confidenceScore * 100).toFixed(0)}% confidence`);
 
   // ── Phase 4: SessionPoller Integration ─────────────────────────────────
-  console.log('\n── Phase 4: SessionPoller State Tracking ──');
+  SwarmTracer.getInstance().emitLog('\n── Phase 4: SessionPoller State Tracking ──');
 
   // Simulate session data that the poller would track
   const mockSessionIds = ['session-001', 'session-002', 'session-003'];
@@ -238,9 +239,9 @@ async function runTests(): Promise<void> {
   }
 
   const sessions = store.listSessions();
-  console.log(`    [${ts()}] Tracked sessions: ${sessions.length}`);
+  SwarmTracer.getInstance().emitLog(`    [${ts()}] Tracked sessions: ${sessions.length}`);
   for (const s of sessions) {
-    console.log(`      ${s.id}: state=${s.state}, strategy=${s.strategy}, pulled=${s.pulled}`);
+    SwarmTracer.getInstance().emitLog(`      ${s.id}: state=${s.state}, strategy=${s.strategy}, pulled=${s.pulled}`);
   }
 
   assert(sessions.length === 3, `3 sessions tracked (got: ${sessions.length})`);
@@ -248,7 +249,7 @@ async function runTests(): Promise<void> {
   assert(sessions.filter(s => s.pulled).length === 1, '1 session pulled');
 
   // ── Phase 5: Report Writer ────────────────────────────────────────────
-  console.log('\n── Phase 5: Report Writer Output ──');
+  SwarmTracer.getInstance().emitLog('\n── Phase 5: Report Writer Output ──');
 
   const reportData = {
     sessions: mockSessionIds.map((id, i) => ({
@@ -265,8 +266,8 @@ async function runTests(): Promise<void> {
   };
 
   const report = generateStatusReport(reportData);
-  console.log(`    [${ts()}] Report generated (${report.length} chars):`);
-  console.log(report.split('\n').map(l => '      ' + l).join('\n'));
+  SwarmTracer.getInstance().emitLog(`    [${ts()}] Report generated (${report.length} chars):`);
+  SwarmTracer.getInstance().emitLog(report.split('\n').map(l => '      ' + l).join('\n'));
 
   assert(report.includes('Jules Swarm Status Report'), 'Report has correct title');
   assert(report.includes('COMPLETED'), 'Report shows COMPLETED status');
@@ -283,7 +284,7 @@ async function runTests(): Promise<void> {
   timeline.push(`[REPORT_WRITTEN] Status report saved`);
 
   // ── Phase 6: Full Handoff Lifecycle Verification ──────────────────────
-  console.log('\n── Phase 6: Full Handoff Lifecycle ──');
+  SwarmTracer.getInstance().emitLog('\n── Phase 6: Full Handoff Lifecycle ──');
 
   // Verify store logging works
   store.appendLog('validation.log', `Artifact validated: ${validation.status}`);
@@ -297,24 +298,24 @@ async function runTests(): Promise<void> {
   timeline.push(`[SUCCESS] Full lifecycle complete`);
 
   // Print timeline
-  console.log(`\n  ┌─── Handoff Timeline ─────────────────────────────────┐`);
+  SwarmTracer.getInstance().emitLog(`\n  ┌─── Handoff Timeline ─────────────────────────────────┐`);
   for (const event of timeline) {
-    console.log(`  │  ${event}`);
+    SwarmTracer.getInstance().emitLog(`  │  ${event}`);
   }
-  console.log(`  └──────────────────────────────────────────────────────┘`);
+  SwarmTracer.getInstance().emitLog(`  └──────────────────────────────────────────────────────┘`);
 
   // Cleanup
   try { fs.rmSync(tempDir, { recursive: true, force: true }); } catch {}
 
   // ── Summary ───────────────────────────────────────────────────────────
-  console.log('\n╔══════════════════════════════════════════════════════════╗');
-  console.log(`║  RESULTS: ${passedTests}/${totalTests} tests passed${' '.repeat(Math.max(0, 35 - `${passedTests}/${totalTests}`.length))}║`);
-  console.log('╚══════════════════════════════════════════════════════════╝\n');
+  SwarmTracer.getInstance().emitLog('\n╔══════════════════════════════════════════════════════════╗');
+  SwarmTracer.getInstance().emitLog(`║  RESULTS: ${passedTests}/${totalTests} tests passed${' '.repeat(Math.max(0, 35 - `${passedTests}/${totalTests}`.length))}║`);
+  SwarmTracer.getInstance().emitLog('╚══════════════════════════════════════════════════════════╝\n');
 
   if (passedTests < totalTests) { process.exit(1); } else { process.exit(0); }
 }
 
 runTests().catch(err => {
-  console.error('Fatal test error:', err);
+  SwarmTracer.getInstance().emitLog('Fatal test error:', err);
   process.exit(1);
 });

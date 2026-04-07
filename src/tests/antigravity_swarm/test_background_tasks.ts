@@ -17,6 +17,7 @@ import { spawn } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
+import { SwarmTracer } from '../../telemetry/tracer.js';
 
 // ── Utilities ───────────────────────────────────────────────────────────────
 
@@ -29,9 +30,9 @@ function assert(condition: boolean, testName: string, details?: string): void {
   totalTests++;
   if (condition) {
     passedTests++;
-    console.log(`    ${PASS} — ${testName}`);
+    SwarmTracer.getInstance().emitLog(`    ${PASS} — ${testName}`);
   } else {
-    console.log(`    ${FAIL} — ${testName}${details ? ` (${details})` : ''}`);
+    SwarmTracer.getInstance().emitLog(`    ${FAIL} — ${testName}${details ? ` (${details})` : ''}`);
   }
 }
 
@@ -71,7 +72,7 @@ function spawnBackgroundJob(
     env: { ...process.env, PYTHONUNBUFFERED: '1' },
   });
 
-  console.log(`    [${ts()}] [SPAWN] Job "${id}" → PID ${child.pid} (${durationHint})`);
+  SwarmTracer.getInstance().emitLog(`    [${ts()}] [SPAWN] Job "${id}" → PID ${child.pid} (${durationHint})`);
 
   const promise = new Promise<{ stdout: string; stderr: string; exitCode: number | null; durationMs: number }>(
     (resolve) => {
@@ -105,13 +106,13 @@ function spawnBackgroundJob(
 // ── Tests ───────────────────────────────────────────────────────────────────
 
 async function runTests(): Promise<void> {
-  console.log('\n╔══════════════════════════════════════════════════════════╗');
-  console.log('║  TEST B: Background Task Spinning                       ║');
-  console.log('║  "Non-Blocking Async Job Orchestration"                  ║');
-  console.log('╚══════════════════════════════════════════════════════════╝\n');
+  SwarmTracer.getInstance().emitLog('\n╔══════════════════════════════════════════════════════════╗');
+  SwarmTracer.getInstance().emitLog('║  TEST B: Background Task Spinning                       ║');
+  SwarmTracer.getInstance().emitLog('║  "Non-Blocking Async Job Orchestration"                  ║');
+  SwarmTracer.getInstance().emitLog('╚══════════════════════════════════════════════════════════╝\n');
 
   // ── Phase 1: Single Background Job + Main Thread Pings ────────────────
-  console.log('── Phase 1: Single Background Job + Main Thread Liveness ──');
+  SwarmTracer.getInstance().emitLog('── Phase 1: Single Background Job + Main Thread Liveness ──');
 
   const SLEEP_SECONDS = 4;
   const EXPECTED_MIN_PINGS = 5;
@@ -132,7 +133,7 @@ sys.exit(0)
   );
 
   const afterSpawnMs = performance.now() - spawnTimestamp;
-  console.log(`    [${ts()}] [MAIN] Spawn returned in ${afterSpawnMs.toFixed(1)}ms`);
+  SwarmTracer.getInstance().emitLog(`    [${ts()}] [MAIN] Spawn returned in ${afterSpawnMs.toFixed(1)}ms`);
   mainThreadPings.push({ ts: performance.now(), label: 'SPAWN_RETURN' });
 
   assert(afterSpawnMs < 1000, `Spawn returned in <1s (got: ${afterSpawnMs.toFixed(0)}ms)`);
@@ -142,7 +143,7 @@ sys.exit(0)
   const pingInterval = setInterval(() => {
     pingCount++;
     const elapsed = ((performance.now() - spawnTimestamp) / 1000).toFixed(2);
-    console.log(`    [${ts()}] [PING ${pingCount}] Main thread alive at +${elapsed}s`);
+    SwarmTracer.getInstance().emitLog(`    [${ts()}] [PING ${pingCount}] Main thread alive at +${elapsed}s`);
     mainThreadPings.push({ ts: performance.now(), label: `PING_${pingCount}` });
   }, 500);
 
@@ -150,11 +151,11 @@ sys.exit(0)
   const result = await job.promise;
   clearInterval(pingInterval);
 
-  console.log(`    [${ts()}] [DONE] Job "${job.id}" completed:`);
-  console.log(`      Exit code: ${result.exitCode}`);
-  console.log(`      Duration:  ${(result.durationMs / 1000).toFixed(2)}s`);
-  console.log(`      Stdout:    ${result.stdout}`);
-  if (result.stderr) console.log(`      Stderr:    ${result.stderr}`);
+  SwarmTracer.getInstance().emitLog(`    [${ts()}] [DONE] Job "${job.id}" completed:`);
+  SwarmTracer.getInstance().emitLog(`      Exit code: ${result.exitCode}`);
+  SwarmTracer.getInstance().emitLog(`      Duration:  ${(result.durationMs / 1000).toFixed(2)}s`);
+  SwarmTracer.getInstance().emitLog(`      Stdout:    ${result.stdout}`);
+  if (result.stderr) SwarmTracer.getInstance().emitLog(`      Stderr:    ${result.stderr}`);
 
   assert(result.exitCode === 0, 'Background job exited with code 0');
   assert(result.durationMs >= (SLEEP_SECONDS - 1) * 1000, `Job took ≥${SLEEP_SECONDS - 1}s (got: ${(result.durationMs / 1000).toFixed(2)}s)`);
@@ -166,11 +167,11 @@ sys.exit(0)
   const pingsDuringJob = mainThreadPings.filter(
     p => p.label.startsWith('PING_') && p.ts < jobEndTs
   ).length;
-  console.log(`    [INFO] Pings during job execution: ${pingsDuringJob}`);
+  SwarmTracer.getInstance().emitLog(`    [INFO] Pings during job execution: ${pingsDuringJob}`);
   assert(pingsDuringJob >= EXPECTED_MIN_PINGS, `Pings interleaved during job (${pingsDuringJob} ≥ ${EXPECTED_MIN_PINGS})`);
 
   // ── Phase 2: Multiple Concurrent Background Tasks ─────────────────────
-  console.log('\n── Phase 2: Concurrent Background Task Fan-Out ──');
+  SwarmTracer.getInstance().emitLog('\n── Phase 2: Concurrent Background Task Fan-Out ──');
 
   const concurrentJobs: BackgroundJob[] = [];
   const fanOutStart = performance.now();
@@ -193,17 +194,17 @@ sys.exit(0)
   }
 
   const spawnAllMs = performance.now() - fanOutStart;
-  console.log(`    [${ts()}] [MAIN] All 3 jobs spawned in ${spawnAllMs.toFixed(1)}ms`);
+  SwarmTracer.getInstance().emitLog(`    [${ts()}] [MAIN] All 3 jobs spawned in ${spawnAllMs.toFixed(1)}ms`);
   assert(spawnAllMs < 2000, `All jobs spawned in <2s (got: ${spawnAllMs.toFixed(0)}ms)`);
 
   // Wait for all to complete
   const concurrentResults = await Promise.all(concurrentJobs.map(j => j.promise));
   const totalConcurrentMs = performance.now() - fanOutStart;
-  console.log(`    [${ts()}] [MAIN] All 3 jobs completed in ${(totalConcurrentMs / 1000).toFixed(2)}s`);
+  SwarmTracer.getInstance().emitLog(`    [${ts()}] [MAIN] All 3 jobs completed in ${(totalConcurrentMs / 1000).toFixed(2)}s`);
 
   for (let i = 0; i < concurrentResults.length; i++) {
     const r = concurrentResults[i];
-    console.log(`    [INFO] Job ${i}: exit=${r.exitCode}, duration=${(r.durationMs / 1000).toFixed(2)}s, stdout="${r.stdout.split('\n').pop()}"`);
+    SwarmTracer.getInstance().emitLog(`    [INFO] Job ${i}: exit=${r.exitCode}, duration=${(r.durationMs / 1000).toFixed(2)}s, stdout="${r.stdout.split('\n').pop()}"`);
     assert(r.exitCode === 0, `Concurrent job ${i} exited with code 0`);
     assert(r.stdout.includes('DONE'), `Concurrent job ${i} completed`);
   }
@@ -212,7 +213,7 @@ sys.exit(0)
   assert(totalConcurrentMs < 7000, `Concurrent jobs ran in parallel (<7s, got: ${(totalConcurrentMs / 1000).toFixed(2)}s)`);
 
   // ── Phase 3: CPU-Intensive Background + Responsive Main Thread ────────
-  console.log('\n── Phase 3: CPU-Intensive Job + Event Loop Responsiveness ──');
+  SwarmTracer.getInstance().emitLog('\n── Phase 3: CPU-Intensive Job + Event Loop Responsiveness ──');
 
   let eventLoopBlocked = false;
   const cpuJob = spawnBackgroundJob(
@@ -244,16 +245,16 @@ sys.exit(0)
     });
   });
   const eventLoopDelay = await elPromise;
-  console.log(`    [${ts()}] Event loop responded in ${eventLoopDelay.toFixed(1)}ms`);
+  SwarmTracer.getInstance().emitLog(`    [${ts()}] Event loop responded in ${eventLoopDelay.toFixed(1)}ms`);
   assert(eventLoopDelay < 100, `Event loop not blocked (<100ms delay, got: ${eventLoopDelay.toFixed(1)}ms)`);
 
   const cpuResult = await cpuJob.promise;
-  console.log(`    [${ts()}] CPU job done: ${cpuResult.stdout}`);
+  SwarmTracer.getInstance().emitLog(`    [${ts()}] CPU job done: ${cpuResult.stdout}`);
   assert(cpuResult.exitCode === 0, 'CPU-intensive job completed successfully');
   assert(cpuResult.stdout.includes('PRIMES_FOUND='), 'CPU job produced correct output');
 
   // ── Phase 4: Background Job State Tracking ────────────────────────────
-  console.log('\n── Phase 4: Job State Machine ──');
+  SwarmTracer.getInstance().emitLog('\n── Phase 4: Job State Machine ──');
 
   enum JobState { PENDING, RUNNING, COMPLETED, FAILED }
   const stateLog: Array<{ state: JobState; ts: number }> = [];
@@ -265,12 +266,12 @@ sys.exit(0)
   );
 
   stateLog.push({ state: JobState.RUNNING, ts: performance.now() });
-  console.log(`    [${ts()}] State: RUNNING`);
+  SwarmTracer.getInstance().emitLog(`    [${ts()}] State: RUNNING`);
 
   const stateResult = await stateJob.promise;
   const finalState = stateResult.exitCode === 0 ? JobState.COMPLETED : JobState.FAILED;
   stateLog.push({ state: finalState, ts: performance.now() });
-  console.log(`    [${ts()}] State: ${JobState[finalState]}`);
+  SwarmTracer.getInstance().emitLog(`    [${ts()}] State: ${JobState[finalState]}`);
 
   assert(stateLog.length === 2, 'State machine tracked 2 transitions');
   assert(stateLog[0].state === JobState.RUNNING, 'Initial state: RUNNING');
@@ -278,14 +279,14 @@ sys.exit(0)
   assert(stateLog[1].ts > stateLog[0].ts, 'State transitions are chronological');
 
   // ── Summary ───────────────────────────────────────────────────────────
-  console.log('\n╔══════════════════════════════════════════════════════════╗');
-  console.log(`║  RESULTS: ${passedTests}/${totalTests} tests passed${' '.repeat(Math.max(0, 35 - `${passedTests}/${totalTests}`.length))}║`);
-  console.log('╚══════════════════════════════════════════════════════════╝\n');
+  SwarmTracer.getInstance().emitLog('\n╔══════════════════════════════════════════════════════════╗');
+  SwarmTracer.getInstance().emitLog(`║  RESULTS: ${passedTests}/${totalTests} tests passed${' '.repeat(Math.max(0, 35 - `${passedTests}/${totalTests}`.length))}║`);
+  SwarmTracer.getInstance().emitLog('╚══════════════════════════════════════════════════════════╝\n');
 
   if (passedTests < totalTests) { process.exit(1); } else { process.exit(0); }
 }
 
 runTests().catch(err => {
-  console.error('Fatal test error:', err);
+  SwarmTracer.getInstance().emitLog('Fatal test error:', err);
   process.exit(1);
 });

@@ -3,9 +3,10 @@ import { GeminiClient } from "../../services/geminiClient.js";
 import { ConcreteInfrastructureContext } from "../../services/infrastructure.js";
 import { ApiPolicyManager } from "../../services/apiPolicyManager.js";
 import * as assert from "node:assert";
+import { SwarmTracer } from '../../telemetry/tracer.js';
 
 async function run() {
-  console.log("Setting up MergeSupervisor test...");
+  SwarmTracer.getInstance().emitLog("Setting up MergeSupervisor test...");
 
   // Force mock by overwriting geminiClient.sendOneShotMessage
   const infraContext = new ConcreteInfrastructureContext();
@@ -28,7 +29,7 @@ async function run() {
   
   // Also mock runGitCommand so we don't accidentally merge in my test
   (supervisor as any).runGitCommand = async (args: string[], cwd: string): Promise<string> => {
-    console.log(`[MOCK GIT] ${args.join(" ")}`);
+    SwarmTracer.getInstance().emitLog(`[MOCK GIT] ${args.join(" ")}`);
     if (args[0] === 'diff') {
         if (args[1] === 'main...bad-branch') {
              return "+ delete_all_files();";
@@ -38,20 +39,20 @@ async function run() {
     return "Mock git output";
   };
 
-  console.log("\\nTesting bad code rejection...");
+  SwarmTracer.getInstance().emitLog("\\nTesting bad code rejection...");
   const badResult = await supervisor.evaluateAndMerge("bad-branch", "s-1", ".", "Implement feature");
   assert.strictEqual(badResult.approved, false);
-  console.log("  ✅ PASS: Handled bad code rejection properly.");
+  SwarmTracer.getInstance().emitLog("  ✅ PASS: Handled bad code rejection properly.");
 
-  console.log("\\nTesting good code approval & merge...");
+  SwarmTracer.getInstance().emitLog("\\nTesting good code approval & merge...");
   const goodResult = await supervisor.evaluateAndMerge("good-branch", "s-2", ".", "Implement feature");
   assert.strictEqual(goodResult.approved, true);
-  console.log("  ✅ PASS: Approved clean code gracefully.");
+  SwarmTracer.getInstance().emitLog("  ✅ PASS: Approved clean code gracefully.");
 
   process.exit(0);
 }
 
 run().catch(err => {
-  console.error("Test failed:", err);
+  SwarmTracer.getInstance().emitLog("Test failed:", err);
   process.exit(1);
 });
