@@ -53,7 +53,7 @@ export class HitlManager {
   static resetInstance(): void {
     if (HitlManager.instance) {
       // Cancel all pending requests
-      for (const [id, pending] of HitlManager.instance.pending) {
+      for (const [_id, pending] of HitlManager.instance.pending) {
         clearTimeout(pending.timeoutHandle);
         pending.reject(new Error('HitlManager reset'));
       }

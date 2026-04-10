@@ -19,7 +19,7 @@ export const searchRegistryTool: MultiAgentTool = {
 
   async execute(
     params: Record<string, unknown>,
-    context: MultiAgentToolContext
+    _context: MultiAgentToolContext
   ): Promise<MultiAgentToolResult> {
     const capability = (params.capability as string) || '';
     const autoInstall = (params.autoInstall as boolean) || false;

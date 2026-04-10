@@ -17,7 +17,11 @@
 import * as fs from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
+import { exec } from 'node:child_process';
+import { promisify } from 'node:util';
 import simpleGit, { SimpleGit } from 'simple-git';
+
+const execAsync = promisify(exec);
 import {
   DEFAULT_GEMINI_FLASH_MODEL,
   DEFAULT_GEMINI_LITE_MODEL,
@@ -465,6 +469,20 @@ export class Orchestrator {
         this.toolContext.hiveMind = HiveMind.getInstance();
         this.toolContext.hitlManager = HitlManager.getInstance();
       } catch { /* non-critical */ }
+
+      // --- Phase 6: Codebase Map Background Sync ---
+      try {
+        // Asynchronously execute the architecture scanner
+        execAsync('powershell.exe -ExecutionPolicy Bypass -File scripts/scan_architecture.ps1')
+          .then(() => {
+            process.stderr.write(`[Orchestrator] <SYNC_MODE> Codebase Map mapped automatically.\n`);
+          })
+          .catch((err: any) => {
+            process.stderr.write(`[Orchestrator] <SYNC_MODE> Scanner execution skipped: ${err.message}\n`);
+          });
+      } catch (err: any) {
+        // Non-critical background task
+      }
 
       // --- Phase 5: Hive Mind Pre-Query Hook ---
       try {

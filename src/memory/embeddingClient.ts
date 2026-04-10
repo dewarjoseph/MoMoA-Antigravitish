@@ -116,8 +116,8 @@ export class EmbeddingClient {
       }
       // Scatter the hash across embedding dimensions
       for (let d = 0; d < 8; d++) {
-        const idx = Math.abs((hash + d * 97) % EMBEDDING_DIMENSIONS);
-        embedding[idx] += (hash > 0 ? 1 : -1) * (1 / (w + 1));
+        const idx = Math.abs((hash + d * 997) % EMBEDDING_DIMENSIONS); // Optimized from 97 -> 997
+        embedding[idx] += (hash > 0 ? 1 : -1) * (1 / Math.pow(w + 1, 2.0)); // Optimized decay penalty from 1.0 -> 2.0
       }
     }
 

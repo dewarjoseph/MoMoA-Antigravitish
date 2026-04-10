@@ -101,7 +101,21 @@ export class HiveMind {
         const scoreB = b.similarity * b.triplet.confidence;
         return scoreB - scoreA;
       })
-      .slice(0, k);
+      .slice(0, k)
+      .map(result => {
+        // V2 DAG Resolution: Inject chronological context if it has a topological parent
+        if (result.triplet.parentId) {
+          const parent = this.memories.find(m => m.id === result.triplet.parentId);
+          if (parent) {
+            // Synthesize the timeline memory so the agent understands causation
+            result.triplet = {
+              ...result.triplet,
+              context: `[Topological Ancestor]: ${parent.context} -> ${parent.action} (Outcome: ${parent.outcome})\n\n[Current Node]: ${result.triplet.context}`
+            };
+          }
+        }
+        return result;
+      });
   }
 
   /**
@@ -141,7 +155,12 @@ export class HiveMind {
       tags: options?.tags ?? [],
       isGoldStandard: options?.isGoldStandard ?? false,
       hitCount: 0,
+      parentId: options?.parentId,
+      timelineMetadata: options?.timelineMetadata
     };
+
+    // DAG Linking: If parentId is missing but we're in a variant branch context, we could try to resolve it.
+    // For now we rely on SwarmManager or Telemetry to seed the parentId.
 
     // Gold standard memories get max confidence
     if (triplet.isGoldStandard) {

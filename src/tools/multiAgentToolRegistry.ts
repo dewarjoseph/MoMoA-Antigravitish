@@ -139,22 +139,54 @@ export async function executeTool(
     return {result: `No valid parameters were found for ${tool?.displayName}.`};
   }
 
-  try {
-    const toolResult = await tool.execute(params, context);
-    return {
-      result: `${toolResultPrefix}\n${toolResult.result}\n${toolResultSuffix}`,
-      transcriptReplacementID: toolResult.transcriptReplacementID,
-      transcriptReplacementString: `${toolResultPrefix}\n${toolResult.transcriptReplacementString}\n${toolResultSuffix}`
-    }
-  } catch (error: unknown) {
-    let errorMessage: string;
-    if (error instanceof Error) {
-      errorMessage = `Error executing ${tool?.displayName} tool: ${error.message}`;
-    } else {
-      errorMessage = `Error executing ${tool?.displayName} tool.`;
-    }
-    return {
-      result: `${toolResultPrefix}\n${errorMessage}\n${toolResultSuffix}`,
+  const MAX_HOTPATCH_RETRIES = 1;
+  let retryCount = 0;
+
+  while(true) {
+    try {
+      const activeTool = tools.get(toolName);
+      if (!activeTool) {
+         return {result: `Error: Tool '${toolName}' is not implemented yet.`};
+      }
+      const toolResult = await activeTool.execute(params, context);
+      return {
+        result: `${toolResultPrefix}\n${toolResult.result}\n${toolResultSuffix}`,
+        transcriptReplacementID: toolResult.transcriptReplacementID,
+        transcriptReplacementString: `${toolResultPrefix}\n${toolResult.transcriptReplacementString}\n${toolResultSuffix}`
+      }
+    } catch (error: unknown) {
+      let errorMessage: string = (error instanceof Error) ? error.message : String(error);
+
+      if (retryCount >= MAX_HOTPATCH_RETRIES) {
+        return {
+          result: `${toolResultPrefix}\nError executing ${tool?.displayName} tool (After Autonomic Hot-Patching): ${errorMessage}\n${toolResultSuffix}`,
+        }
+      }
+
+      // Autonomic Pulse: Hot-Patching
+      process.stderr.write(`[Autonomic Pulse] Trapped failure in ${toolName}: ${errorMessage}\n[Autonomic Pulse] Synthesizing hot-fix using Gemini...\n`);
+      if (context.tracer) {
+         context.tracer.emitLog(`[Autonomic Pulse] Trapped failure in ${toolName}. Synthesizing hot-fix...`);
+      }
+
+      const fixPrompt = `You are the Autonomic Pulse subsystem of MoMoA. The tool ${toolName} just failed with this runtime exception:
+\n${errorMessage}\n
+Write a patched TypeScript version of this tool. For context, you must export a singleton instance of the tool implementing the MultiAgentTool schema. 
+Output ONLY valid TypeScript code. Do NOT include markdown code fences or explanations. Return raw TS source code.`;
+
+      try {
+        const fixResponse = await context.multiAgentGeminiClient.sendOneShotMessage(fixPrompt);
+        const fixCode = fixResponse.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        const cleanCode = fixCode.replace(/^```(typescript|ts)?\n|^```$/gm, '').trim();
+        await generateAndLoadTool(cleanCode);
+        process.stderr.write(`[Autonomic Pulse] Hot-patch dynamically injected for ${toolName}. Retrying execution in same tick...\n`);
+        retryCount++;
+      } catch(fixErr) {
+        process.stderr.write(`[Autonomic Pulse] Hot-patch synthesis failed: ${fixErr}\n`);
+        return {
+          result: `${toolResultPrefix}\nError executing ${tool?.displayName} tool: ${errorMessage}\n${toolResultSuffix}`,
+        }
+      }
     }
   }
 }

@@ -261,7 +261,7 @@ export class SwarmTracer {
     const spans = this.getTrace(traceId);
     if (spans.length === 0) return 'No spans found for this trace.';
 
-    const minStart = Math.min(...spans.map(s => s.startTimeMs));
+    const _minStart = Math.min(...spans.map(s => s.startTimeMs));
     const lines: string[] = [`Trace: ${traceId.substring(0, 16)}...`, ''];
 
     for (const span of spans) {

@@ -6,7 +6,7 @@ export const promptEvolutionTool: MultiAgentTool = {
   name: 'TOOL/EVOLVE{',
   displayName: 'Prompt Evolution',
   endToken: '}',
-  execute: async (params: Record<string, unknown>, context: MultiAgentToolContext): Promise<MultiAgentToolResult> => {
+  execute: async (params: Record<string, unknown>, _context: MultiAgentToolContext): Promise<MultiAgentToolResult> => {
     const promptId = params.promptId as string;
     const newMarkdownContent = params.newMarkdownContent as string;
 

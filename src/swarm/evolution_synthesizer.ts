@@ -4,6 +4,8 @@ import { SwarmManager } from "./swarm_manager.js";
 import { getRawPromptFile } from "../services/promptManager.js";
 import { removeBacktickFences } from "../utils/markdownUtils.js";
 import { DEFAULT_GEMINI_PRO_MODEL } from "../config/models.js";
+import * as fs from 'node:fs/promises';
+import * as path from 'node:path';
 
 export interface PromptVariant {
   variant_id: string;
@@ -47,8 +49,15 @@ export class EvolutionSynthesizer {
     }
 
     // 3. Evolve via Gemini
+    let codebaseMapContext = "--- Codebase Map not available ---";
+    try {
+      codebaseMapContext = await fs.readFile(path.join(repoRoot, 'CODEBASE_MAP.md'), 'utf-8');
+    } catch {
+      console.warn(`[EvolutionSynthesizer] CODEBASE_MAP.md missing, proceeding with limited architecture context.`);
+    }
+
     console.log(`[EvolutionSynthesizer] Invoking Gemini for Meta-Evolution. Generating variants...`);
-    const variants = await this.synthesizeVariantsWithGemini(livePrompt, evolutionaryContext, 3, generationObjective);
+    const variants = await this.synthesizeVariantsWithGemini(livePrompt, evolutionaryContext, codebaseMapContext, 3, generationObjective);
 
     if (variants.length === 0) {
         throw new Error("Meta-Evolutionary Intelligence failed to generate variants or failed to parse output.");
@@ -81,7 +90,7 @@ export class EvolutionSynthesizer {
       }
   }
 
-  private async synthesizeVariantsWithGemini(livePrompt: string, context: any, numVariants: number, objective: string): Promise<PromptVariant[]> {
+  private async synthesizeVariantsWithGemini(livePrompt: string, context: any, architectureMap: string, numVariants: number, objective: string): Promise<PromptVariant[]> {
       const metaPrompt = `
 You are an elite Meta-Evolutionary Intelligence acting within the MoMoA Swarm architecture.
 Your objective is to mathematically and structurally optimize the system prompt for an internal agent capability.
@@ -92,6 +101,11 @@ CURRENT TARGET OBJECTIVE THE NEW PROMPT MUST SOLVE:
 CURRENT LIVE PROMPT (The ancestor/current standard):
 \`\`\`markdown
 ${livePrompt}
+\`\`\`
+
+LIVING ARCHITECTURE CONTEXT (Use this to bind the prompt tightly to the codebase APIs):
+\`\`\`markdown
+${architectureMap}
 \`\`\`
 
 EVOLUTIONARY HISTORY (Memory context from past implementations):

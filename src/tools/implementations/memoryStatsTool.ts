@@ -28,7 +28,7 @@ export const memoryStatsTool: MultiAgentTool = {
     };
   },
 
-  async extractParameters(invocation: string, _context: MultiAgentToolContext): Promise<ToolParsingResult> {
+  async extractParameters(_invocation: string, _context: MultiAgentToolContext): Promise<ToolParsingResult> {
     return { success: true, params: {} };
   }
 };

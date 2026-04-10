@@ -29,6 +29,10 @@ export interface HiveMemoryTriplet {
   hitCount: number;
   /** Reason for last confidence degradation, if any */
   degradationReason?: string;
+  /** V2 DAG Topological Parent ID */
+  parentId?: string;
+  /** V2 Contextual branch/paradox tracker */
+  timelineMetadata?: any;
 }
 
 /** Result from a Hive Mind semantic query */
@@ -43,6 +47,8 @@ export interface HiveWriteOptions {
   tags?: string[];
   confidence?: number;
   isGoldStandard?: boolean;
+  parentId?: string;
+  timelineMetadata?: any;
 }
 
 /** Configuration for the Hive Mind persistence layer */

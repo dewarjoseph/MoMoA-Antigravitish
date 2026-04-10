@@ -276,7 +276,8 @@ Strategy-specific instructions will be injected from the prompt directory if ava
     basePrompt: string, 
     variantPrompts: { id: string, prompt: string }[], 
     repo: string,
-    baseBranch: string = "main" 
+    _baseBranch: string = "main",
+    parentMemoryId?: string
   ): Promise<{ sessionIds: string[], branches: string[] }> {
     this.log(`Initiating Intelligence Loop experiment for task: ${taskId}`);
     const variantBranches: string[] = [];
@@ -287,8 +288,9 @@ Strategy-specific instructions will be injected from the prompt directory if ava
         this.log(`Spawning Jules worker for variant '${variant.id}' on branch: ${branchName}`);
 
         try {
+            const topologyContext = parentMemoryId ? `\n[Topological Memory Parent ID: ${parentMemoryId}]\nIntegrate your findings with this causal parent.` : "";
             const response = await executeTool('JULES_CREATE_SESSION', {
-                prompt: `[IL-Variant: ${variant.id}]\n${basePrompt}\n\n${variant.prompt}`,
+                prompt: `[IL-Variant: ${variant.id}]\n${basePrompt}\n\n${variant.prompt}${topologyContext}`,
                 sourceId: repo,
                 branch: branchName, 
                 requirePlanApproval: false

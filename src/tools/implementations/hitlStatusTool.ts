@@ -56,7 +56,7 @@ export const hitlStatusTool: MultiAgentTool = {
   },
 
   async extractParameters(
-    invocation: string,
+    _invocation: string,
     _context: MultiAgentToolContext
   ): Promise<ToolParsingResult> {
     return { success: true, params: {} };

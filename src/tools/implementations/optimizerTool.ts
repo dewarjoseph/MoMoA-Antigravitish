@@ -119,7 +119,7 @@ export const OptimizerTool: MultiAgentTool = {
 
     // Support "module:function" syntax for Evaluator (Driver)
     let entryPointFunction = null;
-    if (evalScript.includes(':')) {
+    if (evalScript.includes(':') && !evalScript.includes(':\\')) {
         const parts = evalScript.split(':');
         evalScript = parts[0];       
         entryPointFunction = parts[1]; 

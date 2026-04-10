@@ -23,10 +23,10 @@ export function checkContainerMemory(): string {
   // Container/System level memory (What Cloud Run gives you)
   const totalMem = os.totalmem();
   const freeMem = os.freemem();
-  const usedMem = totalMem - freeMem;
+  const _usedMem = totalMem - freeMem;
 
   // Process level memory (What your Node server is currently eating)
-  const procMem = process.memoryUsage();
+  const _procMem = process.memoryUsage();
 
   let memory = `Total Container  Memory    : ${toMB(totalMem)} MB\n\n`;
   memory +=    `Container Available Memory : ${toMB(freeMem)} MB`;

@@ -15,7 +15,11 @@ import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
+import { exec } from 'node:child_process';
+import { promisify } from 'node:util';
 import { SwarmTracer } from '../telemetry/tracer.js';
+
+const execAsync = promisify(exec);
 import { SpanKind, SpanStatus } from '../telemetry/types.js';
 import { measurePayload } from '../telemetry/tokenAccounting.js';
 import type { TraceContext } from '../telemetry/types.js';
@@ -242,11 +246,31 @@ export class McpClientManager {
     if (!conn) return;
 
     conn.connected = false;
+
+    // Capture PID before transport.close() clears it
+    // Note: StdioClientTransport doesn't expose pid directly in its types
+    // but the underlying process is available.
+    // Actually, following Jules' patch, we rely on `conn.transport.pid` if available,
+    // or access it via `(conn.transport as any)._process?.pid` if needed.
+    const pid = (conn.transport as any).serverProcess?.pid || (conn.transport as any)._process?.pid;
+
     try {
       await conn.transport.close();
     } catch (err) {
       // Transport may already be closed
     }
+
+    // Windows hardening: ensure process tree is DEAD to prevent memory grabs
+    if (pid && os.platform() === 'win32') {
+      try {
+        // /F = Forcefully terminate
+        // /T = Terminate child processes (entire tree)
+        await execAsync(`taskkill /F /T /PID ${pid}`);
+      } catch (e) {
+        // Likely already dead or taskkill not available
+      }
+    }
+
     this.connections.delete(name);
     process.stderr.write(`[MCP-Manager] Disconnected '${name}'.\n`);
   }
@@ -536,7 +560,7 @@ export class McpClientManager {
     }
 
     try {
-      this.watcher = fs.watch(configDir, (eventType, filename) => {
+      this.watcher = fs.watch(configDir, (_eventType, filename) => {
         if (filename !== configFile) return;
 
         // Debounce: wait 500ms after last change (editors often write multiple times)
