@@ -258,7 +258,7 @@ export const CodeRunnerTool: MultiAgentTool = {
 
         updateProgress(result);
 
-        // 5. Post-Execution: Scan for Output Files
+        // 5. Post-Execution: Scan for Output Files (only when a temp dir was created)
         const normalizedInputFiles = new Set(files.map(f => path.normalize(f)));
         normalizedInputFiles.add('main_bin'); // Exclude the compiled binary we created (if any)
 
@@ -271,7 +271,7 @@ export const CodeRunnerTool: MultiAgentTool = {
             return Array.prototype.concat(...files);
         };
 
-        const allFilesInTemp = await getFilesRecursively(tempDir);
+        const allFilesInTemp = tempDir ? await getFilesRecursively(tempDir) : [];
         const generatedFiles: string[] = [];
 
         for (const fullPath of allFilesInTemp) {

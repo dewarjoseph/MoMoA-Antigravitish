@@ -42,7 +42,7 @@ async execute(params: Record<string, string>, context: MultiAgentToolContext): P
       context.overseer?.addLog(message);
   };
 
-  const question = params.question;
+  const question = params.question || params.paradox;
 
   updateLog(`${this.displayName} Invoked`);
 
