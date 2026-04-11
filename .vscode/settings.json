@@ -1,0 +1,13 @@
+{
+  "ralphLoop.maxIterations": 300,
+  "ralphLoop.defaultMode": "Fast",
+  "ralphLoop.defaultModel": "Claude Sonnet 4.6 (Thinking)",
+  "ralphLoop.promptFile": "prompt.md",
+  "ralphLoop.taskFile": "PRD.md",
+  "ralphLoop.progressFile": "progress.txt",
+  "ralphLoop.fallbackChain": [
+    { "group": "Gemini Pro", "model": "Gemini 3.1 Pro (High)" },
+    { "group": "Anthropic/OpenAI", "model": "Claude Opus 4.6 (Thinking)" },
+    { "group": "Gemini Flash", "model": "Gemini 3 Flash" }
+  ]
+}

@@ -1,0 +1,2 @@
+[01_ouroboros_standardize_mcp_json_errors] Standardize all MCP tool error responses in `src/mcp_server.ts` to a strict JSON dictionary format: `{ "error": true, "message": "...", "suggestion": "..." }` to improve the SelfHealingRunner's AST-based sequence heuristics.
+[02_ouroboros_validate_hive_mind_drift] Write an offline evaluation script in `experiments/evaluate_hivemind.ts` to mathematically measure semantic embedding drift in the Hive Mind storage, ensuring the Gemini text-embedding wrapper remains orthogonally viable under recursion.

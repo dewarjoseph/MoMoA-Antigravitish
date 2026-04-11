@@ -175,7 +175,19 @@ Write a patched TypeScript version of this tool. For context, you must export a 
 Output ONLY valid TypeScript code. Do NOT include markdown code fences or explanations. Return raw TS source code.`;
 
       try {
-        const fixResponse = await context.multiAgentGeminiClient.sendOneShotMessage(fixPrompt);
+        // OUROBOROS Cycle 2: Timeout guard to prevent indefinite Gemini hang
+        const AUTONOMIC_PULSE_TIMEOUT_MS = 30_000;
+        let timeoutTimer: ReturnType<typeof setTimeout> | undefined;
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          timeoutTimer = setTimeout(() => {
+            reject(new Error(`[Autonomic Pulse] Gemini hot-patch synthesis timed out after ${AUTONOMIC_PULSE_TIMEOUT_MS}ms`));
+          }, AUTONOMIC_PULSE_TIMEOUT_MS);
+        });
+        const fixResponse = await Promise.race([
+          context.multiAgentGeminiClient.sendOneShotMessage(fixPrompt),
+          timeoutPromise,
+        ]);
+        clearTimeout(timeoutTimer);
         const fixCode = fixResponse.candidates?.[0]?.content?.parts?.[0]?.text || '';
         const cleanCode = fixCode.replace(/^```(typescript|ts)?\n|^```$/gm, '').trim();
         await generateAndLoadTool(cleanCode);

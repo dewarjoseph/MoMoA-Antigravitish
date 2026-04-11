@@ -104,7 +104,10 @@ export const CodeRunnerTool: MultiAgentTool = {
         }));
     };
 
-    const files = (params['files'] as string[]) || [];
+    // OUROBOROS Cycle 3: Defensive normalization for MCP bridge compatibility
+    // Handles undefined, null, empty array, and non-array edge cases
+    const rawFiles = params['files'];
+    const files: string[] = Array.isArray(rawFiles) ? rawFiles.filter(f => typeof f === 'string' && f.length > 0) : [];
 
     // 1. Validation
     const explicitCommand = params['command'] as string | undefined;

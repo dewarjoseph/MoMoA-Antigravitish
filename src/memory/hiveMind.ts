@@ -87,11 +87,11 @@ export class HiveMind {
       similarity: EmbeddingClient.cosineSimilarity(queryEmbedding, triplet.embedding),
     }));
 
-    // Filter by threshold and sort by weighted score (similarity * confidence)
-    // Use a lower threshold when hash fallback is active since hash vectors
-    // produce inherently lower cosine similarities
+    // Use a substantially lower threshold for hash fallback since hash vectors
+    // produce inherently sparse cosine similarities (mean ~0.006, empirically validated)
+    // OUROBOROS Cycle 2: Lowered from 0.05 → 0.005 based on ouro_c2_hive_threshold_test.js
     const effectiveThreshold = this.embeddingClient.usingFallback
-      ? Math.min(this.config.similarityThreshold, 0.05)
+      ? Math.min(this.config.similarityThreshold, 0.005)
       : this.config.similarityThreshold;
 
     return scored

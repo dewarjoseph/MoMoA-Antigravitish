@@ -28,6 +28,8 @@ import type { UserSecrets } from './shared/model.js';
 import { scanLocalDirectory } from './utils/localScanner.js';
 import { McpClientManager } from './mcp/mcpClientManager.js';
 import { DynamicMcpTool } from './tools/implementations/dynamicMcpTool.js';
+import { runBootDiagnostics } from './telemetry/bootDiagnostics.js';
+import { SwarmTracer } from './telemetry/tracer.js';
 
 /**
  * Build a MultiAgentToolContext for local MCP operation.
@@ -464,4 +466,27 @@ export async function startMcpServer(
 
   await server.connect(transport);
   process.stderr.write('[MoMo-MCP] MCP server connected and ready.\n');
+
+  // OUROBOROS Cycle 2: Post-startup boot diagnostics
+  // Run in background (non-blocking) to avoid delaying server readiness
+  runBootDiagnostics(10, 5)
+    .then(report => process.stderr.write(`${report}\n`))
+    .catch(err => process.stderr.write(`[Boot Diagnostics] Failed: ${err}\n`));
+
+  // OUROBOROS Cycle 3: Shutdown cascade — flush telemetry on graceful exit
+  let shutdownInProgress = false;
+  const gracefulShutdown = (signal: string) => {
+    if (shutdownInProgress) return;
+    shutdownInProgress = true;
+    process.stderr.write(`[MoMo-MCP] Received ${signal}. Flushing telemetry...\n`);
+    try {
+      const tracer = SwarmTracer.getInstance();
+      tracer.shutdown();
+    } catch (err) {
+      process.stderr.write(`[MoMo-MCP] Tracer shutdown error: ${err}\n`);
+    }
+    process.exit(0);
+  };
+  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+  process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 }

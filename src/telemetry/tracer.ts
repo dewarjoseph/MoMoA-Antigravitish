@@ -27,12 +27,23 @@ export class SwarmTracer {
   private spans: Map<string, Span> = new Map();
   private traces: Map<string, Set<string>> = new Map(); // traceId -> spanIds
   private dirty = false;
+  private flushInterval: ReturnType<typeof setInterval> | null = null;
 
   private constructor(config?: Partial<TelemetryConfig>) {
     this.config = { ...DEFAULT_TELEMETRY_CONFIG, ...config };
     if (this.config.enabled) {
       this.ensureStorageDir();
       this.loadTraces();
+
+      // OUROBOROS Cycle 2: Time-based flush to prevent data loss on crash
+      // The count-based trigger (every 50 spans) is insufficient for low-traffic scenarios
+      this.flushInterval = setInterval(() => {
+        if (this.dirty) {
+          this.persistTraces();
+        }
+      }, 60_000); // Flush every 60 seconds if dirty
+      // unref() so the timer doesn't prevent Node.js from exiting naturally
+      this.flushInterval.unref();
     }
   }
 
@@ -375,5 +386,21 @@ export class SwarmTracer {
   flush(): void {
     this.dirty = true;
     this.persistTraces();
+  }
+
+  /**
+   * OUROBOROS Cycle 2: Clean shutdown — flush pending traces and stop the interval timer.
+   * Call this during graceful process exit to ensure no data loss.
+   */
+  shutdown(): void {
+    if (this.flushInterval) {
+      clearInterval(this.flushInterval);
+      this.flushInterval = null;
+    }
+    // Final flush to persist any remaining dirty traces
+    if (this.dirty) {
+      this.persistTraces();
+    }
+    process.stderr.write('[Telemetry] SwarmTracer shut down cleanly.\n');
   }
 }

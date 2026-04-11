@@ -615,8 +615,9 @@ export class McpClientManager {
     process.stderr.write(`[MCP-Manager] Hot-plug complete: '${name}' with ${toolNames.length} tool(s)\n`);
 
       // Notify the onToolsChanged callback if registered
+      // OUROBOROS Cycle 2: await to prevent fire-and-forget race (was unawaited)
       if (this.onToolsChanged) {
-        this.onToolsChanged();
+        await this.onToolsChanged();
       }
 
       return toolNames;
@@ -633,8 +634,9 @@ export class McpClientManager {
       await this.disconnectServer(name);
 
       // Notify the onToolsChanged callback
+      // OUROBOROS Cycle 2: await to prevent fire-and-forget race (was unawaited)
       if (this.onToolsChanged) {
-        this.onToolsChanged();
+        await this.onToolsChanged();
       }
     });
   }

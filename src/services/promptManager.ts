@@ -16,6 +16,7 @@
 
 import path from 'path';
 import { promises as fs } from 'fs';
+import { createHash } from 'crypto';
 import matter from 'gray-matter';
 import { toKebabCase } from '../utils/markdownUtils.js';
 
@@ -277,9 +278,29 @@ export async function getRawPromptFile(promptId: string): Promise<string> {
 }
 
 /**
+ * OUROBOROS Cycle 3: Integrity snapshot for prompt evolution rollback.
+ * Stores the pre-mutation SHA-256 hash and original content.
+ */
+interface EvolutionSnapshot {
+  hash: string;           // SHA-256 of original content
+  originalContent: string; // Full markdown content before mutation
+  timestamp: number;       // When the evolution occurred
+}
+
+/** Map of promptId -> most recent pre-mutation snapshot */
+const evolutionSnapshots: Map<string, EvolutionSnapshot> = new Map();
+
+/** Compute SHA-256 hash of content */
+function contentHash(content: string): string {
+  return createHash('sha256').update(content, 'utf-8').digest('hex');
+}
+
+/**
  * Evolves a prompt at runtime by rewriting the markdown file and hot-swapping
  * the prompt's representation in the internal memory maps (both raw and resolved).
  * This forces an immediate re-resolution of all internal dependencies.
+ *
+ * OUROBOROS Cycle 3: Now stores a pre-mutation SHA-256 snapshot for integrity rollback.
  *
  * @param promptId The relative ID of the prompt (e.g., 'strings/welcome-message-prompt').
  * @param newMarkdownContent The fully formatted markdown string (including internal gray-matter frontmatter).
@@ -290,6 +311,15 @@ export async function evolvePrompt(promptId: string, newMarkdownContent: string)
   if (!rawPrompts.has(promptId)) {
     throw new Error(`Cannot evolve prompt. Prompt ID '${promptId}' does not exist.`);
   }
+
+  // OUROBOROS Cycle 3: Store pre-mutation integrity snapshot
+  const originalPrompt = rawPrompts.get(promptId)!;
+  const originalMarkdown = matter.stringify(originalPrompt.content, originalPrompt.metadata as any);
+  evolutionSnapshots.set(promptId, {
+    hash: contentHash(originalMarkdown),
+    originalContent: originalMarkdown,
+    timestamp: Date.now(),
+  });
 
   const fullPath = path.join(PROMPTS_BASE_PATH, `${promptId}.md`);
   await fs.writeFile(fullPath, newMarkdownContent, 'utf-8');
@@ -309,6 +339,49 @@ export async function evolvePrompt(promptId: string, newMarkdownContent: string)
     console.error(`Error cascading placeholders during evolution for '${promptId}':`, error);
     throw error;
   }
+}
+
+/**
+ * OUROBOROS Cycle 3: Revert a prompt to its pre-mutation state.
+ * Verifies integrity via SHA-256 before applying rollback.
+ *
+ * @param promptId The relative ID of the prompt to revert.
+ * @returns true if rollback succeeded, false if no snapshot or integrity mismatch.
+ */
+export async function revertPrompt(promptId: string): Promise<{ success: boolean; reason?: string }> {
+  await ready;
+
+  const snapshot = evolutionSnapshots.get(promptId);
+  if (!snapshot) {
+    return { success: false, reason: `No evolution snapshot exists for '${promptId}'.` };
+  }
+
+  // Verify integrity of stored snapshot
+  const verifyHash = contentHash(snapshot.originalContent);
+  if (verifyHash !== snapshot.hash) {
+    return {
+      success: false,
+      reason: `Integrity violation: stored hash ${snapshot.hash.substring(0, 12)}... does not match computed hash ${verifyHash.substring(0, 12)}... — snapshot may be corrupted.`,
+    };
+  }
+
+  // Apply rollback
+  const fullPath = path.join(PROMPTS_BASE_PATH, `${promptId}.md`);
+  await fs.writeFile(fullPath, snapshot.originalContent, 'utf-8');
+
+  const { content, data } = matter(snapshot.originalContent);
+  rawPrompts.set(promptId, { content, metadata: data as PromptMetadata });
+
+  // Re-resolve all prompts
+  for (const [key, prompt] of rawPrompts.entries()) {
+    const resolvedContent = resolvePlaceholders(prompt.content, new Set([key]));
+    resolvedPrompts.set(key, { ...prompt, content: resolvedContent });
+  }
+
+  // Clear the snapshot after successful rollback
+  evolutionSnapshots.delete(promptId);
+
+  return { success: true };
 }
 
 /**
