@@ -127,7 +127,7 @@ async function buildLocalContext(
 export async function createMcpServer(
   projectDir: string,
   mcpConfigPath?: string
-): Promise<McpServer> {
+): Promise<{ server: McpServer; mcpManager?: McpClientManager }> {
   const server = new McpServer({
     name: 'momo-overseer',
     version: '2.0.0',
@@ -393,7 +393,7 @@ export async function createMcpServer(
     }
   );
 
-  return server;
+  return { server, mcpManager };
 }
 
 /**
@@ -457,7 +457,7 @@ export async function startMcpServer(
   projectDir: string,
   mcpConfigPath?: string
 ): Promise<void> {
-  const server = await createMcpServer(projectDir, mcpConfigPath);
+  const { server, mcpManager } = await createMcpServer(projectDir, mcpConfigPath);
   const transport = new StdioServerTransport();
 
   process.stderr.write('[MoMo-MCP] Starting MCP server on stdio...\n');
@@ -475,10 +475,15 @@ export async function startMcpServer(
 
   // OUROBOROS Cycle 3: Shutdown cascade — flush telemetry on graceful exit
   let shutdownInProgress = false;
-  const gracefulShutdown = (signal: string) => {
+  const gracefulShutdown = async (signal: string) => {
     if (shutdownInProgress) return;
     shutdownInProgress = true;
-    process.stderr.write(`[MoMo-MCP] Received ${signal}. Flushing telemetry...\n`);
+    process.stderr.write(`[MoMo-MCP] Received ${signal}. Flushing telemetry and shutting down child servers...\n`);
+
+    if (mcpManager) {
+      await mcpManager.shutdown().catch(err => process.stderr.write(`[MoMo-MCP] manager shutdown error: ${err}\n`));
+    }
+
     try {
       const tracer = SwarmTracer.getInstance();
       tracer.shutdown();
@@ -489,4 +494,6 @@ export async function startMcpServer(
   };
   process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
   process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+  process.stdin.on('close', () => gracefulShutdown('STDIN_CLOSE'));
+  process.stdin.on('end', () => gracefulShutdown('STDIN_END'));
 }
