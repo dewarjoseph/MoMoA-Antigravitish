@@ -50,6 +50,7 @@ import { telemetryDashboardTool } from './implementations/telemetryDashboardTool
 import { autoToolGeneratorTool } from './implementations/autoToolGeneratorTool.js';
 import { promptEvolutionTool } from './implementations/promptEvolutionTool.js';
 import { EvolutionSynthesizerTool } from './implementations/evolutionSynthesizerTool.js';
+import { qisInjectDataTool, qisGetGrammarTool, qisTunePhysicsTool } from './implementations/qisEngineTool.js';
 import * as ts from 'typescript';
 
 // The state is a module-level constant, making it private to this module.
@@ -238,6 +239,9 @@ registerTool(searchRegistryTool);
 registerTool(telemetryDashboardTool);
 registerTool(autoToolGeneratorTool);
 registerTool(promptEvolutionTool);
+registerTool(qisInjectDataTool);
+registerTool(qisGetGrammarTool);
+registerTool(qisTunePhysicsTool);
 
 // --- MCP Resource & Prompt Tools ---
 import { readMcpResourceTool } from './implementations/readMcpResourceTool.js';

@@ -273,6 +273,21 @@ export async function createMcpServer(
         toolSchema = {
             question: z.string().describe("The question requiring web lookup or deep knowledge mining."),
         };
+    } else if (mcpToolName === 'QIS_INJECT_DATA') {
+        toolSchema = {
+            text: z.string().describe("The text data to inject into the QIS Quantum Glass engine for thermodynamic processing."),
+        };
+    } else if (mcpToolName === 'QIS_GET_GRAMMAR') {
+        toolSchema = {};
+    } else if (mcpToolName === 'QIS_TUNE_PHYSICS') {
+        toolSchema = {
+            wDisorder: z.number().optional().describe("Disorder strength w (w_c ≈ 10 is the glass transition point)."),
+            pinkNoiseAlpha: z.number().optional().describe("Autoregressive coefficient for 1/f noise buffer (TLS tunneling memory), 0-1."),
+            pinkNoiseScale: z.number().optional().describe("Base amplitude of 1/f TLS tunneling noise."),
+            decoherenceFactor: z.number().optional().describe("Global decoherence factor for the thermodynamic network."),
+            plasticityScale: z.number().optional().describe("Base learning rate for weight updates (Hebbian learning)."),
+            thermalCooling: z.number().optional().describe("Rate at which unused weights dissolve (Decoherence).")
+        };
     // --- Phase 5: Four Pillars Tool Schemas ---
     } else if (mcpToolName === 'QUERY_HIVE_MIND') {
         toolSchema = {
@@ -323,7 +338,6 @@ export async function createMcpServer(
       toolSchema,
       async (args) => {
         try {
-          require('fs').appendFileSync('mcp_debug.log', `[MoMo-MCP] EXECUTING TOOL ${mcpToolName} with ARGS: ${JSON.stringify(args)}\n`);
           process.stderr.write(`[MoMo-MCP] EXECUTING TOOL ${mcpToolName} with ARGS: ${JSON.stringify(args)}\n`);
           // If we mapped specific properties, `args` carries them natively inside an object.
           // Fallback legacy if params string is present, otherwise use native args object.
@@ -351,7 +365,14 @@ export async function createMcpServer(
         } catch (err) {
           const errorMsg = err instanceof Error ? err.message : String(err);
           return {
-            content: [{ type: 'text' as const, text: `Error: ${errorMsg}` }],
+            content: [{ 
+              type: 'text' as const, 
+              text: JSON.stringify({
+                error: true,
+                message: errorMsg,
+                suggestion: "Check parameter syntax and run LINT or SEARCH_MCP_REGISTRY if the capability appears missing."
+              })
+            }],
             isError: true,
           };
         }

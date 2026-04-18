@@ -73,6 +73,19 @@ export class LocalStore {
     const timestamp = new Date().toISOString();
     const line = `[${timestamp}] ${message}\n`;
     const filePath = path.join(this.logsDir, filename);
+
+    const MAX_MB = 10;
+    try {
+      if (fs.existsSync(filePath)) {
+        const stats = fs.statSync(filePath);
+        if (stats.size > MAX_MB * 1024 * 1024) {
+          const oldPath = filePath + '.old';
+          if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+          fs.renameSync(filePath, oldPath);
+        }
+      }
+    } catch (e) { /* ignore rotation errors */ }
+
     fs.appendFileSync(filePath, line, 'utf-8');
   }
 

@@ -18,6 +18,7 @@ import * as path from 'path';
 import * as fs from 'fs/promises';
 import { spawn } from 'child_process';
 import { MultiAgentTool } from '../multiAgentTool.js';
+import { registerChildProcess } from '../../utils/processRegistry.js';
 import { MultiAgentToolResult, MultiAgentToolContext, ToolParsingResult } from '../../momoa_core/types.js';
 import { randomUUID } from 'crypto';
 import { tmpdir } from 'os';
@@ -133,6 +134,7 @@ function processExecution(command: string, args: string[], filename: string, ful
           cwd: cwd, 
           env: env || process.env
         });
+        registerChildProcess(cmdLineProcess);
 
         // Implement timeout
         const timeout = setTimeout(() => {

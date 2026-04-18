@@ -13,6 +13,7 @@
 import { Command } from 'commander';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
+import './utils/processRegistry.js';
 import { startMcpServer } from './mcp_server.js';
 import { SwarmManager } from './swarm/swarm_manager.js';
 import { SessionPoller } from './swarm/session_poller.js';
@@ -31,10 +32,25 @@ process.on('unhandledRejection', (reason) => {
   store.logError(msg);
 });
 
-process.on('uncaughtException', (error) => {
+process.stdout.on('error', (err: any) => {
+  if (err.code === 'EPIPE') process.exit(0);
+});
+
+process.stderr.on('error', (err: any) => {
+  if (err.code === 'EPIPE') process.exit(0);
+});
+
+process.on('uncaughtException', (error: any) => {
+  if (error && error.code === 'EPIPE') {
+    process.exit(0);
+  }
   const msg = `UNCAUGHT_EXCEPTION: ${error.stack ?? error.message}`;
-  console.error(`[ERROR] ${msg}`);
-  store.logError(msg);
+  try {
+    console.error(`[ERROR] ${msg}`);
+  } catch (e) { /* ignore broken pipes during error logging */ }
+  try {
+    store.logError(msg);
+  } catch (e) { /* ignore */ }
   // Don't exit — keep daemon alive
 });
 
