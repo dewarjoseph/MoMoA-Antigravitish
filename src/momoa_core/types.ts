@@ -81,7 +81,7 @@ export interface MultiAgentToolContext {
   originalFilesSet: Set<string>;
   originalFileMap: Map<string, string>;
   originalBinaryFileMap: Map<string, string>;
-  sendMessage: (message: string) => void;
+  sendMessage: (message: any) => void;
   multiAgentGeminiClient: GeminiClient;
   experts: string[];
   transcriptsToUpdate: TranscriptManager[];
@@ -108,6 +108,7 @@ export interface MultiAgentToolContext {
   hitlManager?: HitlManager;
   tracer?: SwarmTracer;
   activeTraceContext?: TraceContext;
+  sessionTitle?: string;
 }
 
 export interface FuzzyReplaceResult {
@@ -237,3 +238,34 @@ export interface GeminiClientConfig {
 export interface TranscriptManagerConfig {
   context: InfrastructureContext;
 }
+
+export interface ScreenPreviewURLs {
+  htmlCode?: { downloadUrl?: string };
+  screenshot?: { downloadUrl?: string };
+}
+
+export interface DesignResponseItem {
+  designSystem?: {
+    designSystem?: {
+      theme?: {
+        designMd?: string;
+      };
+    };
+  };
+  design?: {
+    screens?: ScreenPreviewURLs[];
+  };
+  text?: string;
+  suggestion?: string;
+}
+
+export interface ExtractedData {
+  htmlUrls: string[];
+  previewUrls: string[];
+  combinedText: string;
+  designMarkdown: string;
+  hasPreviewUrls: boolean;
+}
+
+export const LARGE_FILE_LIMIT_KB = 100;
+export const MAX_CONTEXT_FILE_SIZE_BYTES = 100 * 1024 * 1024;

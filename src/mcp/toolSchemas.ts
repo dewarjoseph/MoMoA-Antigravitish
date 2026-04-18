@@ -163,6 +163,19 @@ export function getMcpToolSchema(mcpToolName: string, tool: any): Record<string,
             traceId: z.string().optional().describe("Specific trace ID to view in detail."),
             last: z.number().optional().describe("Number of recent traces to show (default: 10)."),
         };
+    } else if (mcpToolName === 'JULES_') {
+        return { 
+            request: z.string().describe("The natural language request for Jules to execute."),
+        };
+    } else if (mcpToolName === 'STITCH') {
+        return { 
+            question: z.string().describe("The UI design prompt."),
+            deviceType: z.string().optional().describe("E.g., MOBILE, DESKTOP, TABLET")
+        };
+    } else if (mcpToolName === 'SCREENSHOT') {
+        return { 
+            request: z.string().describe("The natural language request for the screenshot tool.")
+        };
     } else if (tool instanceof DynamicMcpTool) {
         // Dynamic MCP tools: build schema from discovered inputSchema
         return buildZodSchemaFromJson(tool.getInputSchema());

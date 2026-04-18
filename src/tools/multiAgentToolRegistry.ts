@@ -51,6 +51,9 @@ import { autoToolGeneratorTool } from './implementations/autoToolGeneratorTool.j
 import { promptEvolutionTool } from './implementations/promptEvolutionTool.js';
 import { EvolutionSynthesizerTool } from './implementations/evolutionSynthesizerTool.js';
 import { qisInjectDataTool, qisGetGrammarTool, qisTunePhysicsTool } from './implementations/qisEngineTool.js';
+import { julesTool } from './implementations/julesTool.js';
+import { stitchTool } from './implementations/stitchTool.js';
+import { screenCaptureTool } from './implementations/screenCaptureTool.js';
 import * as ts from 'typescript';
 
 // The state is a module-level constant, making it private to this module.
@@ -242,6 +245,11 @@ registerTool(promptEvolutionTool);
 registerTool(qisInjectDataTool);
 registerTool(qisGetGrammarTool);
 registerTool(qisTunePhysicsTool);
+
+// --- Original Smart Tools ---
+registerTool(julesTool);
+registerTool(stitchTool);
+registerTool(screenCaptureTool);
 
 // --- MCP Resource & Prompt Tools ---
 import { readMcpResourceTool } from './implementations/readMcpResourceTool.js';
