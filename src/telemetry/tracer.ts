@@ -19,20 +19,26 @@ import {
   ExhaustionMetric,
   TelemetryConfig,
   DEFAULT_TELEMETRY_CONFIG,
+  SpanSchema, // Import the new schema
+  TelemetryConfigSchema, // Import the new schema
 } from './types.js';
+import { LocalStoreManager } from '../persistence/localStoreManager.js'; // Import LocalStoreManager
 
 export class SwarmTracer {
-  private static instance: SwarmTracer | null = null;
+    private static instance: SwarmTracer | null = null;
   private config: TelemetryConfig;
   private spans: Map<string, Span> = new Map();
   private traces: Map<string, Set<string>> = new Map(); // traceId -> spanIds
   private dirty = false;
   private flushInterval: ReturnType<typeof setInterval> | null = null;
+  private localStore: LocalStoreManager; // Add LocalStoreManager instance
 
   private constructor(config?: Partial<TelemetryConfig>) {
     this.config = { ...DEFAULT_TELEMETRY_CONFIG, ...config };
+    this.localStore = new LocalStoreManager(this.config.storageDir); // Instantiate LocalStoreManager
+
     if (this.config.enabled) {
-      this.ensureStorageDir();
+      // this.ensureStorageDir(); // Removed, LocalStoreManager handles this
       this.loadTraces();
 
       // OUROBOROS Cycle 2: Time-based flush to prevent data loss on crash
@@ -314,10 +320,6 @@ export class SwarmTracer {
 
   // ─── Persistence ────────────────────────────────────────────────────────
 
-  private ensureStorageDir(): void {
-    fs.mkdirSync(this.config.storageDir, { recursive: true });
-  }
-
   private getTraceFilePath(): string {
     return path.join(this.config.storageDir, 'traces.json');
   }
@@ -325,10 +327,9 @@ export class SwarmTracer {
   private loadTraces(): void {
     const filePath = this.getTraceFilePath();
     try {
-      if (fs.existsSync(filePath)) {
-        const raw = fs.readFileSync(filePath, 'utf-8');
-        const data = JSON.parse(raw) as { spans: Span[] };
-        for (const span of data.spans || []) {
+      const data = this.localStore.readState<{ spans: Span[] }>(filePath, undefined, SpanSchema); // Use LocalStoreManager and SpanSchema object
+      if (data && data.spans) {
+        for (const span of data.spans) {
           this.spans.set(span.spanId, span);
           let traceSpans = this.traces.get(span.traceId);
           if (!traceSpans) {
@@ -362,7 +363,7 @@ export class SwarmTracer {
         // Keep only recent spans
         const cutoff = Date.now() - 24 * 60 * 60 * 1000; // 24 hours
         const oldSpans = allSpans.filter(s => s.startTimeMs < cutoff);
-        fs.writeFileSync(archivePath, JSON.stringify({ spans: oldSpans }, null, 2), 'utf-8');
+        this.localStore.writeState(archivePath, { spans: oldSpans }, undefined, SpanSchema); // Use LocalStoreManager and SpanSchema object
 
         // Remove old spans from memory
         for (const span of oldSpans) {
@@ -375,7 +376,7 @@ export class SwarmTracer {
         }
       }
 
-      fs.writeFileSync(this.getTraceFilePath(), JSON.stringify({ spans: [...this.spans.values()] }, null, 2), 'utf-8');
+      this.localStore.writeState(this.getTraceFilePath(), { spans: [...this.spans.values()] }, undefined, SpanSchema); // Use LocalStoreManager and SpanSchema object
       this.dirty = false;
     } catch (err) {
       process.stderr.write(`[Telemetry] Failed to persist traces: ${err}\n`);

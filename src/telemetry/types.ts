@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 /**
  * Glass Swarm Telemetry Types — OpenTelemetry-inspired tracing model
  *
@@ -93,3 +95,25 @@ export const DEFAULT_TELEMETRY_CONFIG: TelemetryConfig = {
   exhaustionThreshold: 500_000, // ~500k tokens before alarm
   enabled: true,
 };
+
+export const SpanSchema = z.object({
+  traceId: z.string(),
+  spanId: z.string(),
+  parentSpanId: z.string().optional(),
+  name: z.string(),
+  kind: z.nativeEnum(SpanKind),
+  startTimeMs: z.number(),
+  endTimeMs: z.number(),
+  status: z.nativeEnum(SpanStatus),
+  attributes: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])),
+  tokensSent: z.number(),
+  tokensReceived: z.number(),
+  children: z.array(z.string()),
+});
+
+export const TelemetryConfigSchema = z.object({
+  storageDir: z.string(),
+  maxFileSizeBytes: z.number(),
+  exhaustionThreshold: z.number(),
+  enabled: z.boolean(),
+});

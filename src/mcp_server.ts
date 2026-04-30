@@ -29,6 +29,7 @@ import { McpClientManager } from './mcp/mcpClientManager.js';
 import { getMcpToolSchema } from './mcp/toolSchemas.js';
 import { runBootDiagnostics } from './telemetry/bootDiagnostics.js';
 import { SwarmTracer } from './telemetry/tracer.js';
+import { processRegistry } from './utils/processRegistry.js';
 
 /**
  * Build a MultiAgentToolContext for local MCP operation.
@@ -286,13 +287,16 @@ export async function startMcpServer(
     shutdownInProgress = true;
     process.stderr.write(`[MoMo-MCP] Received ${signal}. Flushing telemetry and shutting down child servers...\n`);
 
-    if (mcpManager) {
+        if (mcpManager) {
       await mcpManager.shutdown().catch(err => process.stderr.write(`[MoMo-MCP] manager shutdown error: ${err}\n`));
     }
 
+    // Shutdown the process registry to terminate all child processes
+    await processRegistry.shutdown().catch(err => process.stderr.write(`[MoMo-MCP] ProcessRegistry shutdown error: ${err}\n`));
+
     try {
       const tracer = SwarmTracer.getInstance();
-      tracer.shutdown();
+      await tracer.shutdown(); // Await the tracer shutdown
     } catch (err) {
       process.stderr.write(`[MoMo-MCP] Tracer shutdown error: ${err}\n`);
     }

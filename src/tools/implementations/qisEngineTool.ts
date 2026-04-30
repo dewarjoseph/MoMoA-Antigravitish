@@ -5,8 +5,12 @@ import {
   ToolParsingResult,
 } from '../../momoa_core/types.js';
 import { SpanKind, SpanStatus } from '../../telemetry/types.js';
+import { LocalStoreManager } from '../../persistence/localStoreManager.js'; // Import LocalStoreManager
 import * as fs from 'fs';
 import * as path from 'path';
+import * as crypto from 'node:crypto';
+import { fileURLToPath } from 'node:url';
+import { processRegistry } from '../../utils/processRegistry.js';
 
 export interface QISTuneParams {
     wDisorder?: number;
@@ -27,13 +31,6 @@ export interface EngineResponse {
     telemetry_dump?: any;
 }
 
-async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = 15000): Promise<Response> {
-    const controller = new AbortController();
-    const id = setTimeout(() => controller.abort(), timeoutMs);
-    const response = await fetch(url, { ...options, signal: controller.signal });
-    clearTimeout(id);
-    return response;
-}
 
 export const qisInjectDataTool: MultiAgentTool = {
     displayName: 'QIS Inject Data',
@@ -55,41 +52,67 @@ export const qisInjectDataTool: MultiAgentTool = {
             return { result: JSON.stringify(errRes) };
         }
 
-        try {
-            const response = await fetchWithTimeout('http://127.0.0.1:8000/inject_text', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text_input: dataParams.text })
-            });
+        const localStore = new LocalStoreManager();
+        const uniqueId = crypto.randomUUID();
+        const requestFilePath = `.swarm/ipc/req_inject_text_${uniqueId}.json`;
+        const responseFilePath = `.swarm/ipc/res_${uniqueId}.json`;
+        const pollingIntervalMs = 100;
+        const maxPollingTimeMs = 30000; // 30 seconds
 
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status} ${response.statusText}`);
+        try {
+            // 1. Write request file
+            const requestData = {
+                timestamp: Date.now(),
+                text_input: dataParams.text,
+            };
+            localStore.writeState(requestFilePath, requestData);
+            console.error(`[QIS_INJECT_DATA] Request file written to ${requestFilePath}`);
+
+            // 2. Poll for response file
+            let responseData: any | null = null;
+            const startTime = Date.now();
+            while (Date.now() - startTime < maxPollingTimeMs) {
+                responseData = localStore.readState(responseFilePath);
+                if (responseData) {
+                    console.error(`[QIS_INJECT_DATA] Response file read from ${responseFilePath}`);
+                    break;
+                }
+                await new Promise(resolve => setTimeout(resolve, pollingIntervalMs));
             }
 
-            const data = await response.json();
-            const res: EngineResponse = { success: true, result: JSON.stringify(data), telemetry_dump: data };
+            if (!responseData) {
+                throw new Error(`Timeout: No response file found at ${responseFilePath} within ${maxPollingTimeMs}ms.`);
+            }
+
+            // 3. Process response
+            const data = responseData;
+            const res: EngineResponse = { success: data.status === 'success', result: JSON.stringify(data), telemetry_dump: data };
 
             if (span && context.tracer) {
-                context.tracer.endSpan(span, SpanStatus.OK);
+                if (data.status === 'error') {
+                    context.tracer.endSpan(span, SpanStatus.ERROR, { errorMessage: data.detail });
+                } else {
+                    context.tracer.endSpan(span, SpanStatus.OK);
+                }
             }
             return { result: JSON.stringify(res) };
         } catch (err: any) {
-            const errRes: EngineResponse = { success: false, result: `Error communicating with QIS Backend: ${err.message}` };
+            const errRes: EngineResponse = { success: false, result: `Error during QIS Data Injection: ${err.message}` };
             if (span && context.tracer) {
                 context.tracer.endSpan(span, SpanStatus.ERROR, { errorMessage: err.message });
             }
             return { result: JSON.stringify(errRes) };
+        } finally {
+            // 4. Delete IPC files
+            localStore.deleteFile(requestFilePath);
+            localStore.deleteFile(responseFilePath);
         }
     },
-
     async extractParameters(invocation: string, _context: MultiAgentToolContext): Promise<ToolParsingResult> {
-        try {
-            return { success: true, params: JSON.parse(invocation.trim()) };
-        } catch {
-            return { success: true, params: { text: invocation.trim() } };
-        }
+        return { success: true, params: { text: invocation } };
     }
-};
+}
+
 
 export const qisGetGrammarTool: MultiAgentTool = {
     displayName: 'QIS Get Grammar',
@@ -101,23 +124,59 @@ export const qisGetGrammarTool: MultiAgentTool = {
             span = context.tracer.startSpan(context.activeTraceContext, 'QIS_GET_GRAMMAR', SpanKind.TOOL);
         }
 
+        const localStore = new LocalStoreManager();
+        const uniqueId = crypto.randomUUID();
+        const requestFilePath = `.swarm/ipc/req_grammar_${uniqueId}.json`;
+        const responseFilePath = `.swarm/ipc/res_${uniqueId}.json`;
+        const pollingIntervalMs = 100;
+        const maxPollingTimeMs = 30000; // 30 seconds
+
         try {
-            const response = await fetchWithTimeout('http://127.0.0.1:8000/grammar', { method: 'GET' });
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status} ${response.statusText}`);
+            // 1. Write request file (empty or with a timestamp as no specific params are needed)
+            const requestData = {
+                timestamp: Date.now(),
+            };
+            localStore.writeState(requestFilePath, requestData);
+            console.error(`[QIS_GET_GRAMMAR] Request file written to ${requestFilePath}`);
+
+            // 2. Poll for response file
+            let responseData: any | null = null;
+            const startTime = Date.now();
+            while (Date.now() - startTime < maxPollingTimeMs) {
+                responseData = localStore.readState(responseFilePath);
+                if (responseData) {
+                    console.error(`[QIS_GET_GRAMMAR] Response file read from ${responseFilePath}`);
+                    break;
+                }
+                await new Promise(resolve => setTimeout(resolve, pollingIntervalMs));
             }
-            const data = await response.json();
-            const res: EngineResponse = { success: true, result: "Successfully fetched grammar.", telemetry_dump: data };
+
+            if (!responseData) {
+                throw new Error(`Timeout: No response file found at ${responseFilePath} within ${maxPollingTimeMs}ms.`);
+            }
+
+            // 3. Process response
+            const data = responseData;
+            const res: EngineResponse = { success: data.status === 'success', result: "Successfully fetched grammar.", telemetry_dump: data };
+
             if (span && context.tracer) {
-                context.tracer.endSpan(span, SpanStatus.OK);
+                if (data.status === 'error') {
+                    context.tracer.endSpan(span, SpanStatus.ERROR, { errorMessage: data.detail });
+                } else {
+                    context.tracer.endSpan(span, SpanStatus.OK);
+                }
             }
             return { result: JSON.stringify(res) };
         } catch (err: any) {
-            const errRes: EngineResponse = { success: false, result: `Error communicating with QIS Backend: ${err.message}` };
+            const errRes: EngineResponse = { success: false, result: `Error during QIS Get Grammar: ${err.message}` };
             if (span && context.tracer) {
                 context.tracer.endSpan(span, SpanStatus.ERROR, { errorMessage: err.message });
             }
             return { result: JSON.stringify(errRes) };
+        } finally {
+            // 4. Delete IPC files
+            localStore.deleteFile(requestFilePath);
+            localStore.deleteFile(responseFilePath);
         }
     },
 
@@ -126,71 +185,7 @@ export const qisGetGrammarTool: MultiAgentTool = {
     }
 };
 
-export const qisTunePhysicsTool: MultiAgentTool = {
-    displayName: 'QIS Tune Physics',
-    name: 'QIS_TUNE_PHYSICS',
-
-    async execute(params: any, context: MultiAgentToolContext): Promise<MultiAgentToolResult> {
-        let span: any;
-        if (context.tracer && context.activeTraceContext) {
-            span = context.tracer.startSpan(context.activeTraceContext, 'QIS_TUNE_PHYSICS', SpanKind.TOOL, { params: JSON.stringify(params) });
-        }
-
-        const tuneParams = params as QISTuneParams;
-        const tuneReq: Record<string, number> = {};
-        if (tuneParams.wDisorder !== undefined) tuneReq.W_DISORDER = tuneParams.wDisorder;
-        if (tuneParams.pinkNoiseAlpha !== undefined) tuneReq.PINK_NOISE_ALPHA = tuneParams.pinkNoiseAlpha;
-        if (tuneParams.pinkNoiseScale !== undefined) tuneReq.PINK_NOISE_SCALE = tuneParams.pinkNoiseScale;
-        if (tuneParams.decoherenceFactor !== undefined) tuneReq.DECOHERENCE_FACTOR = tuneParams.decoherenceFactor;
-        if (tuneParams.plasticityScale !== undefined) tuneReq.PLASTICITY_SCALE = tuneParams.plasticityScale;
-        if (tuneParams.thermalCooling !== undefined) tuneReq.THERMAL_COOLING = tuneParams.thermalCooling;
-
-        try {
-            const response = await fetchWithTimeout('http://127.0.0.1:8000/tune', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(tuneReq)
-            });
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status} ${response.statusText}`);
-            }
-            const data = await response.json();
-
-            const qisDir = path.resolve(process.cwd(), '../QIS');
-            const configPath = path.join(qisDir, 'config.py');
-            if (fs.existsSync(configPath)) {
-                let configContent = fs.readFileSync(configPath, 'utf8');
-                if (tuneParams.wDisorder !== undefined) configContent = configContent.replace(/W_DISORDER\s*=\s*[\d\.]+/, `W_DISORDER = ${tuneParams.wDisorder}`);
-                if (tuneParams.pinkNoiseAlpha !== undefined) configContent = configContent.replace(/PINK_NOISE_ALPHA\s*=\s*[\d\.]+/, `PINK_NOISE_ALPHA = ${tuneParams.pinkNoiseAlpha}`);
-                if (tuneParams.pinkNoiseScale !== undefined) configContent = configContent.replace(/PINK_NOISE_SCALE\s*=\s*[\d\.]+/, `PINK_NOISE_SCALE = ${tuneParams.pinkNoiseScale}`);
-                if (tuneParams.decoherenceFactor !== undefined) configContent = configContent.replace(/DECOHERENCE_FACTOR\s*=\s*[\d\.]+/, `DECOHERENCE_FACTOR = ${tuneParams.decoherenceFactor}`);
-                if (tuneParams.plasticityScale !== undefined) configContent = configContent.replace(/PLASTICITY_SCALE\s*=\s*[\d\.]+/, `PLASTICITY_SCALE = ${tuneParams.plasticityScale}`);
-                if (tuneParams.thermalCooling !== undefined) configContent = configContent.replace(/THERMAL_COOLING\s*=\s*[\d\.]+/, `THERMAL_COOLING = ${tuneParams.thermalCooling}`);
-                fs.writeFileSync(configPath, configContent, 'utf8');
-            }
-
-            const res: EngineResponse = { success: true, result: "Tuning successful.", telemetry_dump: data };
-            if (span && context.tracer) {
-                context.tracer.endSpan(span, SpanStatus.OK);
-            }
-            return { result: JSON.stringify(res) };
-        } catch (err: any) {
-            const errRes: EngineResponse = { success: false, result: `Error communicating with QIS Backend: ${err.message}` };
-            if (span && context.tracer) {
-                context.tracer.endSpan(span, SpanStatus.ERROR, { errorMessage: err.message });
-            }
-            return { result: JSON.stringify(errRes) };
-        }
-    },
-
-    async extractParameters(invocation: string, _context: MultiAgentToolContext): Promise<ToolParsingResult> {
-        try {
-            return { success: true, params: JSON.parse(invocation.trim()) };
-        } catch {
-            return { success: true, params: {} };
-        }
-    }
-};
+ 
 
 export const qisAnalyzeEpiphanyTool: MultiAgentTool = {
     displayName: 'QIS Analyze Epiphany',
@@ -202,18 +197,68 @@ export const qisAnalyzeEpiphanyTool: MultiAgentTool = {
             span = context.tracer.startSpan(context.activeTraceContext, 'QIS_ANALYZE_EPIPHANY', SpanKind.TOOL);
         }
 
+        const localStore = new LocalStoreManager();
+        const uniqueId = crypto.randomUUID();
+        const requestFilePath = `.swarm/ipc/req_analyze_${uniqueId}.json`;
+        const responseFilePath = `.swarm/ipc/res_${uniqueId}.json`;
+        const pollingIntervalMs = 100;
+        const maxPollingTimeMs = 30000; // 30 seconds
+
         try {
-            const response = await fetchWithTimeout('http://127.0.0.1:8000/analyze_epiphany', { method: 'GET' }, 30000);
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status} ${response.statusText}`);
+            // 1. Write request file
+            const requestData = {
+                timestamp: Date.now(),
+                // Add any other parameters needed by the Python backend for analysis
+            };
+            localStore.writeState(requestFilePath, requestData);
+            console.error(`[QIS_ANALYZE_EPIPHANY] Request file written to ${requestFilePath}`);
+
+            // 2. Poll for response file
+            let responseData: any | null = null;
+            const startTime = Date.now();
+            while (Date.now() - startTime < maxPollingTimeMs) {
+                responseData = localStore.readState(responseFilePath);
+                if (responseData) {
+                    console.error(`[QIS_ANALYZE_EPIPHANY] Response file read from ${responseFilePath}`);
+                    break;
+                }
+                await new Promise(resolve => setTimeout(resolve, pollingIntervalMs));
             }
-            const data: any = await response.json();
+
+            if (!responseData) {
+                throw new Error(`Timeout: No response file found at ${responseFilePath} within ${maxPollingTimeMs}ms.`);
+            }
+
+            // 3. Process response and save topology frame
+            const data: any = responseData; // Assuming the response file contains the NNSD matrix and other data
             
             let message = "Successfully generated NNSD matrix statistics.";
             if (data.status === "error") {
                 message = data.detail;
             } else if (data.status === "success") {
                 message = `Riemann Mapping Extracted. GUE KL Divergence: ${data.metrics.kl_divergence_gue.toFixed(4)} | GOE KL Divergence: ${data.metrics.kl_divergence_goe.toFixed(4)}`;
+                localStore.writeTopologyFrame(data); // Save the topology frame
+
+                // Orchestrate render_epiphany.py to generate the GIF
+                try {
+                    const currentModuleDir = path.dirname(fileURLToPath(import.meta.url));
+                    const absoluteRenderScriptPath = path.resolve(currentModuleDir, '../../../QIS/render_epiphany.py');
+                    const renderScriptCwd = path.dirname(absoluteRenderScriptPath);
+
+                    console.error(`[QIS_ANALYZE_EPIPHANY] Spawning render_epiphany.py from: ${renderScriptCwd}`);
+                    const child = processRegistry.spawn(
+                        'py',
+                        [absoluteRenderScriptPath, '--source', '.swarm/frames', '--out', '.swarm/epiphany_evolution.gif'],
+                        { cwd: renderScriptCwd }
+                    );
+                    child.on('error', (err) => {
+                        console.error(`[QIS_ANALYZE_EPIPHANY] Failed to spawn render_epiphany.py: ${err.message}`);
+                    });
+                    console.error(`[QIS_ANALYZE_EPIPHANY] render_epiphany.py spawned.`);
+                } catch (spawnErr: any) {
+                    console.error(`[QIS_ANALYZE_EPIPHANY] Failed to spawn render_epiphany.py: ${spawnErr.message}`);
+                    // Do not re-throw, allow the analysis to complete even if GIF generation fails
+                }
             }
 
             const res: EngineResponse = { success: data.status === 'success', result: message, telemetry_dump: data };
@@ -227,11 +272,15 @@ export const qisAnalyzeEpiphanyTool: MultiAgentTool = {
             }
             return { result: JSON.stringify(res) };
         } catch (err: any) {
-            const errRes: EngineResponse = { success: false, result: `Error communicating with QIS Backend: ${err.message}` };
+            const errRes: EngineResponse = { success: false, result: `Error during QIS Epiphany Analysis: ${err.message}` };
             if (span && context.tracer) {
                 context.tracer.endSpan(span, SpanStatus.ERROR, { errorMessage: err.message });
             }
             return { result: JSON.stringify(errRes) };
+        } finally {
+            // 4. Delete IPC files
+            localStore.deleteFile(requestFilePath);
+            localStore.deleteFile(responseFilePath);
         }
     },
 

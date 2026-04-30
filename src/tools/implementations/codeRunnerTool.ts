@@ -19,7 +19,7 @@ import * as fs from 'fs/promises';
 import * as os from 'os';
 import { spawn } from 'child_process';
 import { MultiAgentTool } from '../multiAgentTool.js';
-import { registerChildProcess } from '../../utils/processRegistry.js';
+import { processRegistry } from '../../utils/processRegistry.js';
 import { MultiAgentToolResult, MultiAgentToolContext, ToolParsingResult } from '../../momoa_core/types.js';
 import { addDynamicallyRelevantFile, updateFileEntry } from '../../utils/fileAnalysis.js';
 import { logFilename, MAX_MEM_PERCENTAGE, MAX_SCRIPT_EXECUTION_TIMEOUT } from '../../config/config.js';
@@ -41,7 +41,7 @@ const runScript = (
 ) => {
     return new Promise<{stdout: string, stderr: string, timedOut: boolean, exitCode: number | null}>((resolve, reject) => {
         const child = spawn(cmd, args, { cwd, env, shell: true });
-        registerChildProcess(child);
+        processRegistry.register(child);
         
         let stdout = '';
         let stderr = '';

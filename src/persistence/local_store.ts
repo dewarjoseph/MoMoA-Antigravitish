@@ -100,8 +100,59 @@ export class LocalStore {
     fs.writeFileSync(filePath, report, 'utf-8');
   }
 
-  getStatusReportPath(filename: string = 'swarm_status.md'): string {
+    getStatusReportPath(filename: string = 'swarm_status.md'): string {
     return path.join(this.baseDir, filename);
+  }
+
+  // --- Generic State Management ---
+
+  /**
+   * Writes data to a specified file in the base directory, handling JSON or plain text.
+   * @param filename The name of the file, potentially including a relative path within the base directory.
+   * @param data The data to write. Can be any type for JSON, or a string for text.
+   * @param type The type of file ('json' or 'text').
+   */
+  writeStateFile(filename: string, data: any | string, type: 'json' | 'text'): void {
+    const filePath = path.join(this.baseDir, filename);
+    const dirPath = path.dirname(filePath);
+    fs.mkdirSync(dirPath, { recursive: true }); // Ensure parent directory exists
+
+    let content: string;
+    if (type === 'json') {
+      content = JSON.stringify(data, null, 2);
+    } else if (type === 'text') {
+      content = String(data);
+    } else {
+      throw new Error(`Unsupported file type: ${type}`);
+    }
+    fs.writeFileSync(filePath, content, 'utf-8');
+  }
+
+  /**
+   * Reads data from a specified file in the base directory, parsing as JSON or returning as plain text.
+   * @param filename The name of the file, potentially including a relative path within the base directory.
+   * @param type The type of file ('json' or 'text').
+   * @returns The parsed data (for JSON), the file content (for text), or null if the file does not exist or parsing fails.
+   */
+  readStateFile(filename: string, type: 'json' | 'text'): any | string | null {
+    const filePath = path.join(this.baseDir, filename);
+    if (!fs.existsSync(filePath)) {
+      return null;
+    }
+
+    try {
+      const content = fs.readFileSync(filePath, 'utf-8');
+      if (type === 'json') {
+        return JSON.parse(content);
+      } else if (type === 'text') {
+        return content;
+      } else {
+        throw new Error(`Unsupported file type: ${type}`);
+      }
+    } catch (e) {
+      this.logError(`Failed to read or parse state file ${filename}: ${e}`);
+      return null;
+    }
   }
 
   // --- Error logging ---

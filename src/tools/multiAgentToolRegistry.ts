@@ -50,7 +50,8 @@ import { telemetryDashboardTool } from './implementations/telemetryDashboardTool
 import { autoToolGeneratorTool } from './implementations/autoToolGeneratorTool.js';
 import { promptEvolutionTool } from './implementations/promptEvolutionTool.js';
 import { EvolutionSynthesizerTool } from './implementations/evolutionSynthesizerTool.js';
-import { qisInjectDataTool, qisGetGrammarTool, qisTunePhysicsTool, qisAnalyzeEpiphanyTool } from './implementations/qisEngineTool.js';
+import { qisInjectDataTool, qisGetGrammarTool, qisAnalyzeEpiphanyTool } from './implementations/qisEngineTool.js';
+import { qisTuningTool } from './implementations/qisTuningTool.js';
 import { julesTool } from './implementations/julesTool.js';
 import { stitchTool } from './implementations/stitchTool.js';
 import { screenCaptureTool } from './implementations/screenCaptureTool.js';
@@ -244,7 +245,7 @@ registerTool(autoToolGeneratorTool);
 registerTool(promptEvolutionTool);
 registerTool(qisInjectDataTool);
 registerTool(qisGetGrammarTool);
-registerTool(qisTunePhysicsTool);
+registerTool(qisTuningTool);
 registerTool(qisAnalyzeEpiphanyTool);
 
 // --- Original Smart Tools ---

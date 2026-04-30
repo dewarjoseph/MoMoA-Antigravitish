@@ -24,7 +24,7 @@ import { ApiPolicyManager } from './services/apiPolicyManager.js';
 import { ConcreteInfrastructureContext } from './services/infrastructure.js';
 
 // --- Global error handlers ---
-const store = new LocalStore('.swarm');
+const store = new LocalStore();
 
 process.on('unhandledRejection', (reason) => {
   const msg = `UNHANDLED_REJECTION: ${reason}`;
@@ -52,6 +52,16 @@ process.on('uncaughtException', (error: any) => {
     store.logError(msg);
   } catch (e) { /* ignore */ }
   // Don't exit — keep daemon alive
+});
+
+process.on('SIGINT', async () => {
+  console.log('[MoMo] SIGINT received. Shutting down LocalStoreManager...');
+  process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+  console.log('[MoMo] SIGTERM received. Shutting down LocalStoreManager...');
+  process.exit(0);
 });
 
 // --- CLI Definition ---
@@ -133,7 +143,7 @@ swarm
   .option('-r, --repo-root <dir>', 'Local repo root for pulling diffs', process.cwd())
   .option('-s, --strategies <list>', 'Comma-separated strategy names', (val: string) => val.split(','))
   .action(async (opts) => {
-    const sessionIds = opts.sessions || store.listSessions().map(s => s.id);
+    const sessionIds = opts.sessions || store.listSessions().map((s: any) => s.id);
     if (!sessionIds || sessionIds.length === 0) {
       console.log('No sessions exist to monitor. Please run `swarm dispatch` or provide `--sessions <ids>`.');
       return;
@@ -158,7 +168,7 @@ swarm
   .option('-r, --repo-root <dir>', 'Local repo root for pulling diffs', process.cwd())
   .option('-s, --strategies <list>', 'Comma-separated strategy names', (val: string) => val.split(','))
   .action(async (opts) => {
-    const sessionIds = opts.sessions || store.listSessions().map(s => s.id);
+    const sessionIds = opts.sessions || store.listSessions().map((s: any) => s.id);
     if (!sessionIds || sessionIds.length === 0) {
       console.log('No sessions exist to triage. Please run `swarm dispatch` or provide `--sessions <ids>`.');
       return;

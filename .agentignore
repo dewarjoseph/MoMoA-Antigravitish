@@ -1,0 +1,13 @@
+workspace.code-workspace
+node_modules/
+__pycache__
+dist
+.DS_Store
+changes.patch
+.firebase-service-account.json
+.env
+.swarm/
+
+# Ralph Loop operational state
+progress.txt
+.ouroboros_state.json
