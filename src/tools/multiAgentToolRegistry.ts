@@ -50,7 +50,7 @@ import { telemetryDashboardTool } from './implementations/telemetryDashboardTool
 import { autoToolGeneratorTool } from './implementations/autoToolGeneratorTool.js';
 import { promptEvolutionTool } from './implementations/promptEvolutionTool.js';
 import { EvolutionSynthesizerTool } from './implementations/evolutionSynthesizerTool.js';
-import { qisInjectDataTool, qisGetGrammarTool, qisTunePhysicsTool } from './implementations/qisEngineTool.js';
+import { qisInjectDataTool, qisGetGrammarTool, qisTunePhysicsTool, qisAnalyzeEpiphanyTool } from './implementations/qisEngineTool.js';
 import { julesTool } from './implementations/julesTool.js';
 import { stitchTool } from './implementations/stitchTool.js';
 import { screenCaptureTool } from './implementations/screenCaptureTool.js';
@@ -245,6 +245,7 @@ registerTool(promptEvolutionTool);
 registerTool(qisInjectDataTool);
 registerTool(qisGetGrammarTool);
 registerTool(qisTunePhysicsTool);
+registerTool(qisAnalyzeEpiphanyTool);
 
 // --- Original Smart Tools ---
 registerTool(julesTool);
@@ -299,4 +300,36 @@ export function registerDynamicMcpTools(manager: McpClientManager): number {
   }
 
   return count;
+}
+
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+
+export function startHotReloader() {
+  const implDir = path.join(__dirname, 'implementations');
+  try {
+    if (!fs.existsSync(implDir)) return;
+    fs.watch(implDir, { persistent: false }, (eventType, filename) => {
+      if (filename && filename.endsWith('.js')) {
+        const fullPath = path.join(implDir, filename);
+        try {
+          if (typeof require !== 'undefined' && require.cache) {
+              const cacheKey = require.resolve(fullPath);
+              delete require.cache[cacheKey];
+              const dynamicModule = require(fullPath);
+              const toolInst = dynamicModule.default || dynamicModule.tool || Object.values(dynamicModule)[0];
+              if (toolInst && (toolInst as any).name) {
+                 registerTool(toolInst as any);
+                 process.stderr.write(`[MoMo-HotReloader] Hot-reloaded tool logic for ${filename}\n`);
+              }
+          }
+        } catch (e) {
+           process.stderr.write(`[MoMo-HotReloader] Failed to hot-reload ${filename}: ${e}\n`);
+        }
+      }
+    });
+    process.stderr.write(`[MoMo-HotReloader] Listening for changes in ${implDir}\n`);
+  } catch (err) {
+    // Ignore watcher errors gently
+  }
 }

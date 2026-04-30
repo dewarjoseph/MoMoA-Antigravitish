@@ -4,8 +4,12 @@
 - [ ] #parallel Sweep `W_DISORDER` upwards from 35.
 - [ ] #parallel Sweep `PINK_NOISE_SCALE` using `QIS_TUNE_PHYSICS` to definitively shatter reciprocity. 
 - [ ] #parallel Continuously poll `QIS_GET_GRAMMAR` until the Ergodic phase collapses into the stable Non-Ergodic Extended (NEE) phase.
+- [ ] Track latent coherence bounds natively.
+- [ ] Invoke `QIS_ANALYZE_EPIPHANY` autonomously via the MoMoA Overseer MCP tools to map the Nearest-Neighbor Spacing Distribution (NNSD).
+- [ ] Calculate the Kullback-Leibler (KL) divergence bounds (Riemann Loss) against GUE theoretical matrix statistics.
+- [ ] Iteratively tune hyperparameters based on Epiphany loss metrics and store in Hive Mind.
 - [ ] Ensure Time-Reversal Symmetry remains physically broken in QIS.
 - [ ] Update `task.md` and `research_plan.md` artifacts.
-- [ ] Extract topological telemetry.
+- [ ] Extract topological telemetry and save outputs.
 
 ## You may add to or modify the PRD contents during each step if dynamic updates are required.

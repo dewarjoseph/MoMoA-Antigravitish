@@ -17,7 +17,7 @@ import { Console } from 'node:console';
 global.console = new Console(process.stderr, process.stderr);
 
 // Import tool registry
-import { getToolNames, getTool, registerDynamicMcpTools } from './tools/multiAgentToolRegistry.js';
+import { getToolNames, getTool, registerDynamicMcpTools, startHotReloader } from './tools/multiAgentToolRegistry.js';
 import type { MultiAgentToolContext, MultiAgentToolResult } from './momoa_core/types.js';
 import { GeminiClient } from './services/geminiClient.js';
 import { ApiPolicyManager } from './services/apiPolicyManager.js';
@@ -192,7 +192,8 @@ export async function createMcpServer(
               };
           }
           
-          const result: MultiAgentToolResult = await tool.execute(executeParams, context);
+          const activeTool = getTool(toolName) || tool;
+          const result: MultiAgentToolResult = await activeTool.execute(executeParams, context);
           return {
             content: [{ type: 'text' as const, text: result.result }],
           };
@@ -266,6 +267,8 @@ export async function startMcpServer(
   process.stderr.write('[MoMo-MCP] Starting MCP server on stdio...\n');
   process.stderr.write(`[MoMo-MCP] Project directory: ${projectDir}\n`);
   process.stderr.write(`[MoMo-MCP] Registered tools: ${getToolNames().join(', ')}\n`);
+
+  startHotReloader(); // Initialize tool fs.watch
 
   await server.connect(transport);
   process.stderr.write('[MoMo-MCP] MCP server connected and ready.\n');

@@ -1,5 +1,19 @@
 import { z } from 'zod';
 import { DynamicMcpTool } from '../tools/implementations/dynamicMcpTool.js';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+
+// Attempt to dynamically load shared schemas from the QIS repository root
+let sharedSchemaBridge: Record<string, any> = {};
+try {
+    // Navigate from dist/mcp -> dist -> MoMoA-Antigravitish -> repos -> QIS
+    const bridgePath = path.resolve(__dirname, '../../../QIS/schema_bridge.json');
+    if (fs.existsSync(bridgePath)) {
+        sharedSchemaBridge = JSON.parse(fs.readFileSync(bridgePath, 'utf-8'));
+    }
+} catch (e) {
+    // Silent fail if bridge not found
+}
 
 /**
  * Resolves the appropriate Zod schema for a given MoMo overseer MCP tool.
@@ -7,6 +21,11 @@ import { DynamicMcpTool } from '../tools/implementations/dynamicMcpTool.js';
  * to dynamic evaluation for hot-plugged tools.
  */
 export function getMcpToolSchema(mcpToolName: string, tool: any): Record<string, z.ZodTypeAny> {
+    // 1. Give precedence to Shared Schema Bridge (QIS dynamic sync)
+    if (sharedSchemaBridge[mcpToolName]) {
+        return buildZodSchemaFromJson(sharedSchemaBridge[mcpToolName]);
+    }
+
     if (mcpToolName === 'DOC_READ') {
         return { filename: z.string().describe("Target file path to read") };
     } else if (mcpToolName === 'DOC_EDIT') {
@@ -115,6 +134,8 @@ export function getMcpToolSchema(mcpToolName: string, tool: any): Record<string,
             text: z.string().describe("The text data to inject into the QIS Quantum Glass engine for thermodynamic processing."),
         };
     } else if (mcpToolName === 'QIS_GET_GRAMMAR') {
+        return {};
+    } else if (mcpToolName === 'QIS_ANALYZE_EPIPHANY') {
         return {};
     } else if (mcpToolName === 'QIS_TUNE_PHYSICS') {
         return {
