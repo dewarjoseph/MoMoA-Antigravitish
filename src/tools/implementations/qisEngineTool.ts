@@ -240,8 +240,8 @@ export const qisAnalyzeEpiphanyTool: MultiAgentTool = {
 
                 // Orchestrate render_epiphany.py to generate the GIF
                 try {
-                    const currentModuleDir = __dirname;
-                    const absoluteRenderScriptPath = path.resolve(currentModuleDir, '../../../../QIS/render_epiphany.py');
+                    const workDir = process.env.MOMO_WORKING_DIR || process.cwd();
+                    const absoluteRenderScriptPath = path.resolve(workDir, '../QIS/render_epiphany.py');
                     const renderScriptCwd = path.dirname(absoluteRenderScriptPath);
 
                     console.error(`[QIS_ANALYZE_EPIPHANY] Spawning render_epiphany.py from: ${renderScriptCwd}`);
