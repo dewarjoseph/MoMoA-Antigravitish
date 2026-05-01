@@ -24,7 +24,6 @@ import {
 import { DEFAULT_GEMINI_FLASH_MODEL } from '../../config/models.js';
 import { getToolPreamblePrompt, replaceRuntimePlaceholders } from '../../services/promptManager.js';
 import { removeBacktickFences } from '../../utils/markdownUtils.js';
-import { StitchToolClient, StitchError } from "@google/stitch-sdk";
 import { TranscriptManager } from '../../services/transcriptManager.js';
 
 /**
@@ -54,7 +53,8 @@ export const stitchTool: MultiAgentTool = {
         return { result: "No Stitch API key was provided."}
 
     try {
-      const client = new StitchToolClient({
+      const stitchSdk = await import('@google/stitch-sdk');
+      const client = new stitchSdk.StitchToolClient({
         apiKey: `${context.secrets.stitchApiKey}`
       });
 
@@ -215,7 +215,7 @@ You will now receive questions from Stitch.`;
 
         } catch (innerError: any) {
           // Check for recoverable errors via the SDK
-          const isRecoverable = innerError instanceof StitchError && innerError.recoverable;
+          const isRecoverable = innerError instanceof stitchSdk.StitchError && innerError.recoverable;
           const remainingTime = TEN_MINUTES_MS - (Date.now() - startTime);
 
           if (isRecoverable && remainingTime > retryDelay) {
@@ -229,7 +229,11 @@ You will now receive questions from Stitch.`;
       }
     } catch (error: any) {
       let errorMessage = error.message;
-      if (error instanceof StitchError) {
+      
+      let StitchErrorObj;
+      try { StitchErrorObj = (await import('@google/stitch-sdk')).StitchError; } catch(e) {}
+      
+      if (StitchErrorObj && error instanceof StitchErrorObj) {
         errorMessage = `[${error.code}] ${error.message}`;
       }
       

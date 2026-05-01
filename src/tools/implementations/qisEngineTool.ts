@@ -9,7 +9,6 @@ import { LocalStoreManager } from '../../persistence/localStoreManager.js'; // I
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'node:crypto';
-import { fileURLToPath } from 'node:url';
 import { processRegistry } from '../../utils/processRegistry.js';
 
 export interface QISTuneParams {
@@ -241,8 +240,8 @@ export const qisAnalyzeEpiphanyTool: MultiAgentTool = {
 
                 // Orchestrate render_epiphany.py to generate the GIF
                 try {
-                    const currentModuleDir = path.dirname(fileURLToPath(import.meta.url));
-                    const absoluteRenderScriptPath = path.resolve(currentModuleDir, '../../../QIS/render_epiphany.py');
+                    const currentModuleDir = __dirname;
+                    const absoluteRenderScriptPath = path.resolve(currentModuleDir, '../../../../QIS/render_epiphany.py');
                     const renderScriptCwd = path.dirname(absoluteRenderScriptPath);
 
                     console.error(`[QIS_ANALYZE_EPIPHANY] Spawning render_epiphany.py from: ${renderScriptCwd}`);
