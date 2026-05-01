@@ -34,8 +34,8 @@ export const qisTuningTool: MultiAgentTool = {
         // For local simplicity, we assume processRegistry.spawn handles process tracking.
         console.error('[QisTuningTool] Spawning train_server.py...');
         try {
-            const currentModuleDir = __dirname;
-            const absoluteTrainServerPath = path.resolve(currentModuleDir, '../../../QIS/train_server.py');
+            const workDir = process.env.MOMO_WORKING_DIR || process.cwd();
+            const absoluteTrainServerPath = path.resolve(workDir, '../QIS/train_server.py');
             const trainServerCwd = path.dirname(absoluteTrainServerPath);
 
             console.error(`[QisTuningTool] Resolved train_server.py path: ${absoluteTrainServerPath}`);

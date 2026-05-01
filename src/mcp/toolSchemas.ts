@@ -6,8 +6,9 @@ import * as path from 'node:path';
 // Attempt to dynamically load shared schemas from the QIS repository root
 let sharedSchemaBridge: Record<string, any> = {};
 try {
-    // Navigate from dist/mcp -> dist -> MoMoA-Antigravitish -> repos -> QIS
-    const bridgePath = path.resolve(__dirname, '../../../QIS/schema_bridge.json');
+    // Dynamically resolve QIS based on working directory environment
+    const workDir = process.env.MOMO_WORKING_DIR || process.cwd();
+    const bridgePath = path.resolve(workDir, '../QIS/schema_bridge.json');
     if (fs.existsSync(bridgePath)) {
         sharedSchemaBridge = JSON.parse(fs.readFileSync(bridgePath, 'utf-8'));
     }
