@@ -69,3 +69,22 @@ node dist/cli.js swarm triage
 
 ## License
 This project is licensed under the Apache 2 License - see the `license.md` file for details.
+
+### Using the VSCode Extension UI (MoMoA Offline Preview)
+
+This repository includes a VSCode Extension that provides a Webview hosting the MoMoA Researcher offline front end. This allows you to visualize and interact with the daemon directly inside your editor.
+
+**To build and install the VSIX package:**
+
+1. Navigate to the `vscode-extension` directory and ensure the `web` frontend is built:
+```bash
+cd web && npm run build
+cd ../vscode-extension
+npm install
+npm run compile
+npm run package
+```
+
+2. Install the resulting `.vsix` file via the VSCode command palette (`Extensions: Install from VSIX...`).
+
+3. Once installed, run the command **Open MoMo UI** from the VSCode Command Palette to open the preview plane.

@@ -1,0 +1,36 @@
+{
+  "name": "momo-overseer-extension",
+  "displayName": "MoMo Overseer UI",
+  "description": "Offline IDE wrapper for MoMoA Researcher Webview",
+  "version": "1.0.0",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "momo.openWebview",
+        "title": "Open MoMo UI"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.90.0",
+    "@types/node": "18.x",
+    "typescript": "^5.3.3",
+    "@vscode/vsce": "^2.31.1"
+  }
+}
