@@ -13,15 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 import { GeminiClient } from '../services/geminiClient.js';
 import { TranscriptManager } from '../services/transcriptManager.js';
 import { UserSecrets } from '../shared/model.js';
 import { Overseer } from './overseer.js';
-import type { McpClientManager } from '../mcp/mcpClientManager.js';
-import type { HiveMind } from '../memory/hiveMind.js';
-import type { HitlManager } from '../hitl/hitlManager.js';
-import type { SwarmTracer } from '../telemetry/tracer.js';
-import type { TraceContext } from '../telemetry/types.js';
 
 export interface FileContent {
   path: string;
@@ -71,6 +67,16 @@ export enum VerbosityType {
   Quiet = 'QUIET'
 }
 
+export enum ToolExecutionEnvironmentType {
+  Local = "LOCAL",
+  CloudRun = "CLOUDRUN",
+  CloudShellEditor = "CLOUDSHELLEDITOR",
+  CloudWorkstation = "CLOUDWORKSTATION",
+  E2B = "E2B",
+  Inverse_SSH_Tunnel = "INVERSE_SSH_TUNNEL",
+  Remote_Desktop_Agent = "REMOTE_DESKTOP_AGENT"
+}
+
 export interface MultiAgentToolContext {
   initialPrompt: string;
   initialImage?: string;
@@ -93,8 +99,6 @@ export interface MultiAgentToolContext {
   julesSessionSummaries?: string[];
   julesBranchName?: string | null;
   julesSessionName?: string | undefined;
-  julesEnvSetupPromise?: Promise<boolean>;
-  julesEnvSetupSuccess?: boolean;
   assumptions?: string;
   secrets: UserSecrets;
   projectSpecification?: string;
@@ -103,12 +107,8 @@ export interface MultiAgentToolContext {
   signal?: AbortSignal;
   projectDeadlineMs?: number;
   gracePeriodMs?: number;
-  mcpClientManager?: McpClientManager;
-  hiveMind?: HiveMind;
-  hitlManager?: HitlManager;
-  tracer?: SwarmTracer;
-  activeTraceContext?: TraceContext;
-  sessionTitle?: string;
+  toolExecutionEnvironment: string;
+  sessionTitle: string;
 }
 
 export interface FuzzyReplaceResult {
@@ -269,3 +269,40 @@ export interface ExtractedData {
 
 export const LARGE_FILE_LIMIT_KB = 100;
 export const MAX_CONTEXT_FILE_SIZE_BYTES = 100 * 1024 * 1024;
+
+export const SWARM_CLIENT_METHODS = {
+  agent_ready: "_swarm/agent_ready",
+  metadata_update: "_swarm/metadata_update",
+  terminal_update: "_swarm/terminal/update",
+  git_patch: "_swarm/git_patch",
+} as const;
+
+export const SWARM_RUNNER_METHODS = {
+  session_prompt: "_swarm/session/prompt",
+  session_cancel: "_swarm/session/cancel",
+} as const;
+
+export type SessionMetadata = {
+  title: string;
+  status: "pending" | "running" | "complete" | "failed" | "blocked" | "idle";
+  summary?: string;
+  startedAt?: number;
+  modifiedAt?: number;
+  latestUpdate?: string;
+  agentName: string;
+  config?: Record<string, unknown>;
+  secrets?: Record<string, boolean>;
+  serverName: string;
+  serverInstanceId: string | null;
+  [key: `_ext_${string}`]: unknown;
+};
+
+export type SwarmTerminalUpdateNotification = {
+  terminalId: string;
+  stdoutChunk?: string;
+  stderrChunk?: string;
+};
+
+export type SwarmGitPatchNotification = {
+  patch: string;
+};
