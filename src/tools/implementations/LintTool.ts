@@ -18,7 +18,6 @@ import * as path from 'path';
 import * as fs from 'fs/promises';
 import { spawn } from 'child_process';
 import { MultiAgentTool } from '../multiAgentTool.js';
-import { processRegistry } from '../../utils/processRegistry.js';
 import { MultiAgentToolResult, MultiAgentToolContext, ToolParsingResult } from '../../momoa_core/types.js';
 import { randomUUID } from 'crypto';
 import { tmpdir } from 'os';
@@ -56,7 +55,7 @@ async function saveFile(sessionId: string, filename: string, fileContent: string
 
     await fs.mkdir(dirPath, { recursive: true });
     await fs.writeFile(fullPath, fileContent, 'utf8');
-    console.error(`File saved successfully to ${fullPath}`);
+    console.log(`File saved successfully to ${fullPath}`);
 }
 
 /**
@@ -127,14 +126,13 @@ function processExecution(command: string, args: string[], filename: string, ful
 
         // Use 'spawn' for security to prevent command injection by keeping
         // command and arguments separate.
-        console.error("Execute: " + command + " " + args.join(' '));
+        console.log("Execute: " + command + " " + args.join(' '));
 
         const cmdLineProcess = spawn(command, args, { 
-          shell: true, 
+          shell: false, 
           cwd: cwd, 
           env: env || process.env
         });
-        processRegistry.register(cmdLineProcess);
 
         // Implement timeout
         const timeout = setTimeout(() => {
@@ -225,10 +223,10 @@ export const LintTool: MultiAgentTool = {
         };
     }
 
-    context.sendMessage(JSON.stringify({
-        status: "PROGRESS_UPDATES",
-        completed_status_message: `Linting \`${filename}\``,
-      })
+    context.sendMessage({
+        type: 'PROGRESS_UPDATE',
+        message: `Linting \`${filename}\``,
+      }
     );
 
     // Handle binary files first.
@@ -282,17 +280,19 @@ export const LintTool: MultiAgentTool = {
       switch (language) {
         case 'python':
           linterCommand = 'python3'; 
-          linterArgs = ['-m', 'flake8', fullFileName, '--show-source'];
+          linterArgs = ['-m', 'flake8', fullFileName, '--config', 'linter-tool-definition-files/.flake8', '--show-source'];
         break;        
         case 'javascript':
-          // 1. Point to Project's Binary (Absolute Path via Infrastructure Native Root)
-          const projRoot = process.env.MOMO_WORKING_DIR || process.cwd();
-          const eslintBinaries = process.platform === 'win32' ? 'eslint.cmd' : 'eslint';
-          linterCommand = path.resolve(projRoot, 'node_modules', '.bin', eslintBinaries);
+          // 1. Point to Hub's Binary (Absolute Path)
+          linterCommand = path.resolve('node_modules', '.bin', 'eslint');
           
-          // 2. Target the file by BASENAME (since we will be inside the temp dir)
+          // 2. Point to Hub's Config (Absolute Path)
+          const configPath = path.resolve('linter-tool-definition-files', 'eslint.config.js');
+          
+          // 3. Target the file by BASENAME (since we will be inside the temp dir)
           linterArgs = [
               path.basename(fullFileName), 
+              '--config', configPath, 
               '--no-color', 
               '--format', 'codeframe' 
           ];
@@ -305,7 +305,8 @@ export const LintTool: MultiAgentTool = {
           break;
         case 'java':
           linterCommand = 'java';
-          linterArgs = ['-jar', path.resolve(process.env.MOMO_WORKING_DIR || process.cwd(), 'checkstyle-all.jar'), fullFileName];
+          // Note: This assumes checkstyle-10.23.1-all.jar is a valid JAR file.
+          linterArgs = ['-jar', 'linter-tool-definition-files/checkstyle-10.23.1-all.jar', fullFileName, '-c', 'linter-tool-definition-files/google_checks.xml'];
           break;
         case 'cpp':
           linterCommand = 'clang-tidy';
@@ -325,7 +326,10 @@ export const LintTool: MultiAgentTool = {
           break;
         case 'kotlin':
           linterCommand = 'ktlint'; 
-          linterArgs = [fullFileName];
+          linterArgs = [
+              '--editorconfig=linter-tool-definition-files/.editorconfig',
+              fullFileName
+          ];
           break;
         case 'maven':
           linterCommand = 'mvn';
@@ -348,7 +352,7 @@ export const LintTool: MultiAgentTool = {
       if (language === 'javascript') {
           executionCwd = path.dirname(fullFileName);
 
-          const projectNodeModules = path.resolve(process.env.MOMO_WORKING_DIR || process.cwd(), 'node_modules');
+          const projectNodeModules = path.resolve(process.cwd(), 'node_modules');
           
           executionEnv = {
               ...process.env, // Inherit existing variables
@@ -385,10 +389,10 @@ export const LintTool: MultiAgentTool = {
           output = resultPrefix ? `${resultPrefix}\n${noWarningsOrErrors}` : noWarningsOrErrors;
       }
 
-      context.sendMessage(JSON.stringify({
-        status: "PROGRESS_UPDATES",
-        completed_status_message: output,
-      }));
+      context.sendMessage({
+        type: 'PROGRESS_UPDATE',
+        message: output,
+      });
 
       return { result: output };
 

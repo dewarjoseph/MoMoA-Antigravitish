@@ -33,71 +33,43 @@ export const fileSearchTool: MultiAgentTool = {
    * @returns A promise that resolves to the file's content or an error message.
    */
   async execute(params: Record<string, string>, context: MultiAgentToolContext): Promise<MultiAgentToolResult> {
+
     const query = params.query;
-    const projectRoot = process.env.MOMO_WORKING_DIR || process.cwd();
 
-    context.sendMessage(JSON.stringify({
-      status: "PROGRESS_UPDATES",
-      completed_status_message: `Searching filesystem for \`${query}\``,
-    }));
+    context.sendMessage({
+      type: 'PROGRESS_UPDATE',
+      message: `Searching for \`${query}\``,
+    });
 
-    const searchResults = new Set<string>();
+    // 1. Search text file content.
+    const contentMatches = findInFiles(query, context.fileMap) || [];
     
-    try {
-        const { exec } = await import('child_process');
-        const util = await import('util');
-        const execAsync = util.promisify(exec);
+    // Use a Set to store unique results to avoid duplicates.
+    const searchResults = new Set<string>(contentMatches);
 
-        // Try `git grep` first as it strictly ignores .git and binaries efficiently.
-        // -i: ignore case, -I: ignore binary files, -n: line numbers
-        // We wrap query in quotes safely by escaping existing double quotes.
-        const safeQuery = query.replace(/"/g, '\\"');
-        
-        try {
-            const { stdout } = await execAsync(`git grep -i -I -n "${safeQuery}"`, { cwd: projectRoot, maxBuffer: 1024 * 1024 * 10 });
-            if (stdout) {
-                const lines = stdout.split('\n').filter(l => l.trim().length > 0);
-                lines.forEach(l => searchResults.add(l));
-            }
-        } catch (gitErr: any) {
-            // git grep exits with code 1 if no matches exist.
-            if (gitErr.code === 1 && !gitErr.stderr) {
-                 // Nothing found natively, silent ignore.
+    // 2. Search all filenames (both text and binary).
+    const allFilenames = [...context.fileMap.keys(), ...context.binaryFileMap.keys()];
+    for (const filename of allFilenames) {
+        if (filename.includes(query)) {
+            if (context.binaryFileMap.has(filename)) {
+                searchResults.add(`Binary file found: ${filename}`);
             } else {
-                 // Fallback to basic fileMap check if git fails directly!
-                 // Fallback to basic fileMap check if git fails directly!
-                 const allFilenames = [...context.fileMap.keys()];
-                 for (const filename of allFilenames) {
-                     if (filename.toLowerCase().includes(query.toLowerCase())) {
-                          searchResults.add(`[Filename Match]: ${filename}`);
-                     }
-                     const content = context.fileMap.get(filename);
-                     if (content) {
-                          const lowerQuery = query.toLowerCase();
-                          const lines = content.split('\n');
-                          for (let i = 0; i < lines.length; i++) {
-                              if (lines[i].toLowerCase().includes(lowerQuery)) {
-                                  searchResults.add(`${filename}:${i+1}:${lines[i].trim()}`);
-                              }
-                          }
-                     }
-                 }
+                // If found by content search, it's already in the set as just the filename.
+                // This logic ensures we don't add it twice.
+                searchResults.add(filename);
             }
         }
-    } catch (e: any) {
-        searchResults.add(`[Error during native search]: ${e.message}`);
     }
 
-    const finalResultArray = Array.from(searchResults).slice(0, 500); // cap to 500 results to avoid massive context explosion
+    const finalResultArray = Array.from(searchResults);
     const replacementString = `---FILE SEARCH RESULTS INTENTIONALLY REMOVED---`;
 
-    let result = finalResultArray.length > 0 ? finalResultArray.join('\n') : `No matches found for your query.`;
-    if (searchResults.size > 500) result += `\n... (Capped at 500 results)`;
+    const result = finalResultArray.length > 0 ? finalResultArray.join('\n') : `No matches found for your query.`;
 
-    context.sendMessage(JSON.stringify({
-      status: "PROGRESS_UPDATES",
-      completed_status_message: `\`\`\`\n${result.substring(0, 300)}...\n\`\`\``,
-    }));
+    context.sendMessage({
+      type: 'PROGRESS_UPDATE',
+      message: `\`\`\`\n${result.trim()}\n\`\`\``,
+    });
 
     return {
       result: result,

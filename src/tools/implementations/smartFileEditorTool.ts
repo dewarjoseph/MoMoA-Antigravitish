@@ -31,7 +31,7 @@ import { logFilename } from '../../config/config.js';
 
 const filenameStart = `DOC/EDIT{`;
 const filenameEnd = `}\nTO\u005fREPLACE`;
-const fixInstructions = `Please review the tool instructions and follow the syntax rules carefully before trying again. The most common mistake is not surrounding the TO_REPLACE text or the NEW_TEXT in curly braces, make sure you're doing this.`;
+const fixInstructions = `Please review the tool instructions and follow the syntax rules carefully before trying again. The most common mistake is not surrounding the TO\u005fREPLACE text or the NEW\u005fTEXT in curly braces, make sure you're doing this.`;
 
 /**
  * Implements the Smart File Editor Tool, providing functionality to edit file content
@@ -387,8 +387,8 @@ export const smartFileEditorTool: MultiAgentTool = {
    */
   async extractParameters(invocation: string, context: MultiAgentToolContext): Promise<ToolParsingResult> {
     if (!invocation ||
-        !invocation.includes("TO_REPLACE") || 
-        !invocation.includes("NEW_TEXT")) {
+        !invocation.includes("TO\u005fREPLACE") || 
+        !invocation.includes("NEW\u005fTEXT")) {
       return {
         success: false, 
         error: `Invalid syntax for the ${this.displayName} Tool. ${fixInstructions}`
@@ -472,21 +472,21 @@ function deleteFile(filename: string, context: MultiAgentToolContext) {
 }
 
 async function extractEditRequestParameters(stringToParse: string): Promise<ToolParsingResult> {
-  const toReplaceStart = `TO_REPLACE:{`;
-  const toReplaceEnd = `}\nNEW_TEXT`;
-  const replacementTextStart = `\nNEW_TEXT:{`;
-  const replacementTextEnd = '}\nEND_EDIT';
+  const toReplaceStart = `TO\u005fREPLACE:{`;
+  const toReplaceEnd = `}\nNEW\u005fTEXT`;
+  const replacementTextStart = `\nNEW\u005fTEXT:{`;
+  const replacementTextEnd = '}\nEND\u005fEDIT';
 
   if (!stringToParse.startsWith(toReplaceStart) || !stringToParse.includes(toReplaceEnd))
     return {
       success: false,
-      error: `The editing tool couldn't find the "TO_REPLACE:{}" section that provides the string to replace. This is most commonly a syntax error caused by missing the surrounding curly braces ({}) or an additional colon (:). Please check your syntax carefully before trying again.`
+      error: `The editing tool couldn't find the "TO\u005fREPLACE:{}" section that provides the string to replace. This is most commonly a syntax error caused by missing the surrounding curly braces ({}) or an additional colon (:). Please check your syntax carefully before trying again.`
     }
 
   if (!stringToParse.includes(replacementTextStart) || !stringToParse.includes(replacementTextEnd))
     return {
       success: false,
-      error: `The editing tool couldn't find the "NEW_TEXT:{}" section that provides the replacement string to use. This is most commonly a syntax error caused by missing the surrounding curly braces ({}) or an additional colon (:). Please check your syntax carefully before trying again.`
+      error: `The editing tool couldn't find the "NEW\u005fTEXT:{}" section that provides the replacement string to use. This is most commonly a syntax error caused by missing the surrounding curly braces ({}) or an additional colon (:). Please check your syntax carefully before trying again.`
     }
 
   const toReplaceStrings: string[] = [];
@@ -502,8 +502,8 @@ async function extractEditRequestParameters(stringToParse: string): Promise<Tool
 
     const newStartIdx = searchString.indexOf(replacementTextStart, toEndIdx);
     
-    // Find where NEW_TEXT ends: it's either before the next TO_REPLACE:{ or before END_EDIT
-    const nextToReplaceIdx = searchString.indexOf(`}\nTO_REPLACE:{`, newStartIdx);
+    // Find where NEW\u005fTEXT ends: it's either before the next TO\u005fREPLACE:{ or before END\u005fEDIT
+    const nextToReplaceIdx = searchString.indexOf(`}\nTO\u005fREPLACE:{`, newStartIdx);
     let newEndIdx;
     if (nextToReplaceIdx !== -1) {
       newEndIdx = nextToReplaceIdx;
@@ -560,13 +560,13 @@ function editFile(filename: string, fromString: string | string[], toString: str
         result = `'${filename}' has been successfully deleted.`;
         progressUpdate = result;
     } else {
-        result = `The attempted edit of '${filename}' failed because it is a binary file, which cannot be edited. You can only delete binary files by using TO_REPLACE:{OVERWRITE_ENTIRE_FILE} and an empty NEW_TEXT.`;
+        result = `The attempted edit of '${filename}' failed because it is a binary file, which cannot be edited. You can only delete binary files by using TO\u005fREPLACE:{OVERWRITE_ENTIRE_FILE} and an empty NEW\u005fTEXT.`;
         progressUpdate = `The attempted edit of '${filename}' failed because it is a binary file.`;
     }
     worklog = result;
   } else if (isEmptyReplace) {
     // Explicitly block the old empty bracket loophole to prevent accidental deletions/overwrites
-    result = `The attempted edit of '${filename}' failed because TO_REPLACE was empty. To overwrite or delete a file, you must explicitly use TO_REPLACE:{OVERWRITE_ENTIRE_FILE}. To append to the end of a file, use TO_REPLACE:{APPEND}.`;
+    result = `The attempted edit of '${filename}' failed because TO\u005fREPLACE was empty. To overwrite or delete a file, you must explicitly use TO\u005fREPLACE:{OVERWRITE_ENTIRE_FILE}. To append to the end of a file, use TO\u005fREPLACE:{APPEND}.`;
     progressUpdate = result;
     worklog = result;
   } else if (isOverwrite) {
@@ -601,7 +601,7 @@ function editFile(filename: string, fromString: string | string[], toString: str
     }
   } else {
     if (!fileExists) {
-      result = `The attempted edit of '${filename}' failed because the file doesn't exist. You must create the file first by using TO_REPLACE:{OVERWRITE_ENTIRE_FILE}.`;
+      result = `The attempted edit of '${filename}' failed because the file doesn't exist. You must create the file first by using TO\u005fREPLACE:{OVERWRITE_ENTIRE_FILE}.`;
       progressUpdate = result;
       worklog = result;
     } else {

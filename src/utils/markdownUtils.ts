@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-import { MultiAgentToolContext } from "../momoa_core/types";
-import { getAssetString } from "../services/promptManager";
-import { getFileAnalysis } from "./fileAnalysis";
-import { fileNameLookup } from "./fileNameLookup";
+import { MultiAgentToolContext } from "../momoa_core/types.js";
+import { getAssetString } from "../services/promptManager.js";
+import { getFileAnalysis } from "./fileAnalysis.js";
+import { fileNameLookup } from "./fileNameLookup.js";
 
 /**
  * Removes triple backtick fences from a string if they exist at the start and end.
@@ -34,21 +34,17 @@ import { fileNameLookup } from "./fileNameLookup";
  */
 export function removeBacktickFences(text: string): string {
   const trimmedText = text.trim();
-  
-  // Aggressive extraction: if there's any ```json ... ``` or ``` ... ``` block anywhere in the text
-  const match = /```(?:json)?\s*([\s\S]*?)\s*```/i.exec(trimmedText);
-  if (match && match[1]) {
-    return match[1].trim();
-  }
-
   const lines = trimmedText.split('\n');
 
-  // Check if there are at least two lines
+  // Check if there are at least two lines (for opening and closing fences)
+  // and if the first line starts with '```' and the last line (when trimmed) is
+  //  exactly '```'.
   if (
     lines.length >= 2 &&
     lines[0].trim().startsWith('```') &&
     lines[lines.length - 1].trim() === '```'
   ) {
+    // Extract the content between the fences
     const contentLines = lines.slice(1, lines.length - 1);
     const content = contentLines.join('\n');
     return content;
@@ -60,13 +56,7 @@ export function removeBacktickFences(text: string): string {
     return content;
   }
 
-  // If conditions are not met, try parsing the string directly just in case it's valid JSON
-  try {
-    JSON.parse(trimmedText);
-    return trimmedText;
-  } catch {}
-
-  // Return the original string as a fallback
+  // If conditions are not met, return the original untrimmed string
   return text;
 }
 
