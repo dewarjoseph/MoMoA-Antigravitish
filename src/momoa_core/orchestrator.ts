@@ -64,7 +64,7 @@ export class Orchestrator {
   private transcriptManager: TranscriptManager;
   private infrastructureContext: InfrastructureContext;
   private multiAgentGeminiClient: GeminiClient;
-  private sendMessage: (message: string) => void;
+  private sendMessage: (message: any) => void;
   private fileMap: Map<string, string>;
   private binaryFileMap: Map<string, string>; 
   private editedFileList: Set<string>;
@@ -110,7 +110,7 @@ export class Orchestrator {
     fileMap: Map<string, string>,
     binaryFileMap: Map<string, string>, 
     multiAgentGeminiClient: GeminiClient,
-    sendMessage: (message: string) => void,
+    sendMessage: (message: any) => void,
     assumptions: string,
     _baseModelName: string = DEFAULT_GEMINI_FLASH_MODEL, 
     saveFiles: boolean,
@@ -152,10 +152,7 @@ export class Orchestrator {
 
     this.signal?.addEventListener('abort', () => {
       this.updateLog('Orchestrator received abort signal from user.');
-      this.sendMessage(JSON.stringify({
-        status: 'PROGRESS_UPDATES',
-        current_status_message: '# Project shutdown initiated',
-      }));
+      this.sendMessage({ type: "PROGRESS_UPDATE", message: '# Project shutdown initiated', });
     });
 
     this.mode = mode;
@@ -212,18 +209,12 @@ export class Orchestrator {
     }
   }
 
-  private async updateProgressLog(message: string) {
-    this.sendMessage(JSON.stringify({
-      status: 'PROGRESS_UPDATES',
-      completed_status_message: message,
-    }));
+  private async updateProgressLog(message: string | Promise<string>) {
+    this.sendMessage({ type: "PROGRESS_UPDATE", message: message, });
   }
 
   private async updateLog(message: string, updateOverseerLog: boolean = true) {
-    this.sendMessage(JSON.stringify({
-      status: 'WORK_LOG',
-      message: message,
-    }));
+    this.sendMessage({ type: "WORK_LOG", message: message, });
 
     if (updateOverseerLog && this.overseer)
       this.overseer.addLog(message);
@@ -301,8 +292,8 @@ export class Orchestrator {
     this.hasWarnedTimeLow = false;
 
     const sessionTitle = await generateSessionTitle(this.initialPrompt.trim(), this.multiAgentGeminiClient) ?? "New Task";
-    await this.updateProgressLog(`# ${sessionTitle}\n`);
-    await this.updateProgressLog("## Agentic Loop Initialization");
+    this.updateProgressLog(`# ${sessionTitle}\n`);
+    this.updateProgressLog("## Agentic Loop Initialization");
 
 
     try {
@@ -322,12 +313,12 @@ export class Orchestrator {
       const OVERSEER_FREQUENCY_MINS = 15;
       this.overseer = await Overseer.createAndStart(OVERSEER_FREQUENCY_MINS * 60 * 1000, this.assumptions, this.multiAgentGeminiClient);
       this.toolContext.overseer = this.overseer;
-      await this.updateProgressLog(`Initiating Project Overseer with ${OVERSEER_FREQUENCY_MINS} minute frequency.`)
+      this.updateProgressLog(`Initiating Project Overseer with ${OVERSEER_FREQUENCY_MINS} minute frequency.`)
 
       if (this.maxDurationMs)
-        await this.updateProgressLog(`This deployment is limited to ${(this.maxDurationMs / 60 / 1000)} minutes per task session.`)
+        this.updateProgressLog(`This deployment is limited to ${(this.maxDurationMs / 60 / 1000)} minutes per task session.`)
 
-      await this.updateProgressLog(checkContainerMemory());
+      this.updateProgressLog(checkContainerMemory());
       
       let { preamble } = await getExpertPrompt('orchestrator');
       preamble = await replaceRuntimePlaceholders(preamble,
@@ -348,13 +339,10 @@ export class Orchestrator {
           { model: DEFAULT_GEMINI_LITE_MODEL, signal: this.signal }
         ))?.text || welcomeMessage;
 
-        this.sendMessage(JSON.stringify({
-          status: 'PROGRESS_UPDATES',
-          current_status_message: welcomeMessage,
-        }));
+        this.sendMessage({ type: "PROGRESS_UPDATE", message: welcomeMessage, });
       } catch {}
 
-      await this.updateProgressLog(`You can ask question about what I've done using the Chat window. When I've finished I'll suggest a number of follow up tasks that you can initiate. If you check 'Auto-run Top Suggestion', I'll automatically initiate the first suggested task. This happens client-side, so you'll need to keep this project selected and don't close the tab.`);
+      this.updateProgressLog(`You can ask question about what I've done using the Chat window. When I've finished I'll suggest a number of follow up tasks that you can initiate. If you check 'Auto-run Top Suggestion', I'll automatically initiate the first suggested task. This happens client-side, so you'll need to keep this project selected and don't close the tab.`);
       
       if (this.mode && this.mode != ServerMode.ORCHESTRATOR)
         await this.updateLog(`# Mode: ${this.mode}`);        
@@ -368,10 +356,10 @@ export class Orchestrator {
       await this.updateLog(uploadFilesLog, false);
 
       if ((this.binaryFileMap.size + this.fileMap.size) > 0)
-        await this.updateProgressLog(uploadFilesLog);
+        this.updateProgressLog(uploadFilesLog);
 
       // Enrich the initial prompt.
-      await this.updateProgressLog('\n## Enriched Research User Prompt\n----');
+      this.updateProgressLog('\n## Enriched Research User Prompt\n----');
 
       const researchPrompt = await replaceRuntimePlaceholders(await getAssetString("researcher_enricher"), {
         ResearchProblem : this.initialPrompt.trim()
@@ -384,23 +372,20 @@ export class Orchestrator {
       const dateTimeString = CleanFormattedDateTime(new Date());
       this.initialPrompt = `${researchPrompt}\n\n${recommendations}\n\nThe current date and time is: ${dateTimeString}`;
 
-      await this.updateProgressLog(`\`\`\`\`\n${this.initialPrompt}\n\`\`\`\``);
-      await this.updateProgressLog('----\n');
+      this.updateProgressLog(`\`\`\`\`\n${this.initialPrompt}\n\`\`\`\``);
+      this.updateProgressLog('----\n');
 
       await this.updateLog(`# Enriched SDLC Agent Task Request:\n${this.initialPrompt}`);
 
-      await this.updateProgressLog("## Attachment Analysis")
+      this.updateProgressLog("## Attachment Analysis")
 
-      this.sendMessage(JSON.stringify({
-        status: 'PROGRESS_UPDATES',
-        current_status_message: '### Checking for an attached image',
-      }));
+      this.sendMessage({ type: "PROGRESS_UPDATE", message: '### Checking for an attached image', });
 
       // Add any image that was attached.
       if (this.initialImageMimeType && this.initialImage) {
         this.transcriptManager.addImage(`The user has provided the following image that has been attached to their prompt.`, this.initialImage, this.initialImageMimeType);
         await this.updateLog(`\n# Added the attached ${this.initialImageMimeType}`);
-        await this.updateProgressLog(`Added image prompt attachement: ${this.initialImageMimeType}`);
+        this.updateProgressLog(`Added image prompt attachement: ${this.initialImageMimeType}`);
       } else {
         await this.updateLog(`\n# No Image Attachment Provided`);
       }
@@ -411,7 +396,7 @@ export class Orchestrator {
       this.transcriptManager.addEntry('user', faqString, { documentId: EXISTING_FAQ_ID, replacementIfSuperseded: faqString });
 
       // Analyze the files
-      await this.updateProgressLog("### Analyzing provided project files")
+      this.updateProgressLog("### Analyzing provided project files")
       await analyzeFiles(this.fileMap, this.multiAgentGeminiClient);
 
       await analyzeAndSetTaskRelevantFiles(
@@ -487,23 +472,20 @@ export class Orchestrator {
           const hiveMindContext = `\n\n## Hive Mind: Relevant Past Lessons\nThe following lessons from past sessions may be relevant:\n${lessonText}\n`;
           this.transcriptManager.addEntry('user', hiveMindContext);
           process.stderr.write(`[Orchestrator] Hive Mind injected ${lessons.length} past lesson(s) into context.\n`);
-          await this.updateProgressLog(`Hive Mind: Found ${lessons.length} relevant past lesson(s)`);
+          this.updateProgressLog(`Hive Mind: Found ${lessons.length} relevant past lesson(s)`);
         }
       } catch (hiveErr: any) {
         process.stderr.write(`[Orchestrator] Hive Mind pre-query failed (non-critical): ${hiveErr.message}\n`);
       }
 
-      await this.updateProgressLog("\n## Primary Orchestration loop")
+      this.updateProgressLog("\n## Primary Orchestration loop")
 
       while (!isDone) {
         if (this.signal?.aborted) {
           await this.updateLog('Exiting Orchestrator.');
 
-          this.sendMessage(JSON.stringify({
-            status: 'PROGRESS_UPDATES',
-            current_status_message: 'Cancelling Project.',
-            completed_status_message: '## Cancelling Project\n\nThe Orchestrator has received a cancellation request. Shutting down.'
-          }));
+          this.sendMessage({ type: "PROGRESS_UPDATE", message: 'Cancelling Project.',
+            completed_status_message: '## Cancelling Project\n\nThe Orchestrator has received a cancellation request. Shutting down.' });
 
           isDone = true;
           await this.endOrchestrator();
@@ -517,10 +499,7 @@ export class Orchestrator {
           // Hard Deadline: Out of time, force shut down immediately
           if (timeRemaining <= 0) {
             await this.updateLog('Hard time limit reached. Forcing Orchestrator shutdown.');
-            this.sendMessage(JSON.stringify({
-              status: 'PROGRESS_UPDATES',
-              completed_status_message: '## Time Limit Exceeded\n\nThe allocated time for this run has expired. Shutting down.'
-            }));
+            this.sendMessage({ type: "PROGRESS_UPDATE", message: '## Time Limit Exceeded\n\nThe allocated time for this run has expired. Shutting down.' });
             isDone = true;
             await this.endOrchestrator();
             continue;
@@ -532,7 +511,7 @@ export class Orchestrator {
             
             this.transcriptManager.addEntry('user', timeWarning);
             await this.updateLog(`# Time Warning Triggered:\n${timeWarning}`, false);
-            await this.updateProgressLog(`\n### System Alert\nApproaching time limit. Forcing completion.`);
+            this.updateProgressLog(`\n### System Alert\nApproaching time limit. Forcing completion.`);
           }
         }
 
@@ -578,10 +557,7 @@ export class Orchestrator {
           switch (feedback.action) {
             case 'RESTART':
               this.updateLog(`Overseer has ordered a RESTART with guidance.`, false);
-              this.sendMessage(JSON.stringify({
-                status: 'PROGRESS_UPDATES',
-                completed_status_message: `\n### Overseer\nThe Overseer has ordered a restart. Resetting state and restarting the project.`,
-              }));
+              this.sendMessage({ type: "PROGRESS_UPDATE", message: `\n### Overseer\nThe Overseer has ordered a restart. Resetting state and restarting the project.`, });
 
               // 1. Revert all files to their original state
               this.fileMap = new Map(this.originalFileMap);
@@ -660,10 +636,7 @@ export class Orchestrator {
             case 'ABANDON':
               // As defined in the overseer prompt, this is a catastrophic action
               this.updateLog('The overseer has decided to abandon the project.', false);
-              this.sendMessage(JSON.stringify({
-                status: 'PROGRESS_UPDATES',
-                completed_status_message: '\n### Overseer\nThe project overseer has abandoned the project.',
-              }));
+              this.sendMessage({ type: "PROGRESS_UPDATE", message: '\n### Overseer\nThe project overseer has abandoned the project.', });
               isDone = true; // This will terminate the `while (!isDone)` loop
               continue; // Skip the rest of this turn
 
@@ -693,7 +666,7 @@ export class Orchestrator {
         }
 
         const current_status_message = await this.summarizeOrchestratorUpdate(responseText);
-        await this.updateProgressLog(`\n### Orchestrator (Turn ${turnCount-1})\n${current_status_message}`);
+        this.updateProgressLog(`\n### Orchestrator (Turn ${turnCount-1})\n${current_status_message}`);
 
         // 1. Check for \u0040STARTWORKPHASE
         if (/^\u0040STARTWORKPHASE/m.test(responseText)) {
@@ -783,10 +756,7 @@ ${retrospectiveObject.other_pertinent_notes || '--None--'}`.trim();
 
               updateText = `This Work Phase is complete. ${updateText}`
 
-              this.sendMessage(JSON.stringify({
-                status: 'PROGRESS_UPDATES',
-                completed_status_message: updateText
-              }));
+              this.sendMessage({ type: "PROGRESS_UPDATE", message: updateText });
 
             } catch (error: unknown) {
               const errorMessage = `An Error happened within the Work Phase: ${error instanceof Error ? error.message : String(error)}`;
@@ -813,7 +783,7 @@ ${retrospectiveObject.other_pertinent_notes || '--None--'}`.trim();
           const tool = getTool(toolRequest.toolName);
 
           await this.updateLog(`Invoking Tool: '${tool?.displayName}' with parameters:\n${JSON.stringify(toolRequest.params)}`);
-          await this.updateProgressLog(`\n### '${tool?.displayName}' Invoked`);
+          this.updateProgressLog(`\n### '${tool?.displayName}' Invoked`);
 
           try {
             // Use self-healing runner for eligible tools (RUN, OPTIMIZE)
@@ -845,10 +815,7 @@ ${retrospectiveObject.other_pertinent_notes || '--None--'}`.trim();
             const errorMessage = `Tool execution failed: ${error instanceof Error ? error.message : String(error)}`;
             this.transcriptManager.addEntry('user', errorMessage);
             this.updateLog(`Tool Error:\n${errorMessage}`);
-            this.sendMessage(JSON.stringify({
-              status: 'PROGRESS_UPDATES',
-              completed_status_message: `The ${tool?.displayName} tool failed with the following error:\n${errorMessage}`,
-            }));
+            this.sendMessage({ type: "PROGRESS_UPDATE", message: `The ${tool?.displayName} tool failed with the following error:\n${errorMessage}`, });
           }
           continue;
         }
@@ -878,10 +845,7 @@ ${retrospectiveObject.other_pertinent_notes || '--None--'}`.trim();
               hitlResponse = await hitlPromise;
             }
 
-            this.sendMessage(JSON.stringify({
-              status: 'PROGRESS_UPDATES',
-              current_status_message: `Thinking about your answer...`,
-            }));
+            this.sendMessage({ type: "PROGRESS_UPDATE", message: `Thinking about your answer...`, });
 
             this.updateLog(`HITL response:\n${hitlResponse}`);
             this.transcriptManager.addEntry('user', hitlResponse);
@@ -1049,9 +1013,9 @@ ${tokenUsageXml.trim()}
 
   private async endOrchestrator() {
     await this.updateLog(`\n# Orchestrator is finshed.`); // Log Orchestrator completion
-    await this.updateProgressLog(`### Orchestrator\nOrchestration loop has completed.`)
+    this.updateProgressLog(`### Orchestrator\nOrchestration loop has completed.`)
     if (this.overseer) {
-      await this.updateProgressLog("Shutting down Overseer.");
+      this.updateProgressLog("Shutting down Overseer.");
       this.overseer.stop(); // Stop the Overseer when the Orchestrator is done
     }
 
@@ -1059,7 +1023,7 @@ ${tokenUsageXml.trim()}
     if (this.toolContext.julesBranchName) {
       const branchName = this.toolContext.julesBranchName;
       await this.updateLog(`Session complete. Cleaning up Jules scratchpad branch: ${branchName}`);
-      await this.updateProgressLog(`Removing ephemeral GitHub Scratchpad \`${branchName}\``);
+      this.updateProgressLog(`Removing ephemeral GitHub Scratchpad \`${branchName}\``);
       const tempDir = await fs.mkdtemp(path.join(tmpdir(), 'jules-cleanup-'));
       try {
         // We need a local clone to issue the remote delete command
@@ -1083,7 +1047,7 @@ ${tokenUsageXml.trim()}
 
     const {result, retrospective, feedback } = await this.generateProjectSummary();
 
-    await this.updateProgressLog(`\n## Project Result Summary\n${retrospective}`);
+    this.updateProgressLog(`\n## Project Result Summary\n${retrospective}`);
 
     // 1. Calculate total time
     const endTime = Date.now();

@@ -88,19 +88,19 @@ async function buildLocalContext(
     originalFilesSet: new Set<string>(),
     originalFileMap: new Map<string, string>(fileMap),
     originalBinaryFileMap: new Map<string, string>(binaryFileMap),
-    sendMessage: (msg: string) => {
+    sendMessage: (msg: any) => {
       // In headless mode, log to stderr so it doesn't interfere with MCP stdio
       try {
-        const parsed = JSON.parse(msg);
+        const parsed = typeof msg === 'string' ? JSON.parse(msg) : msg;
         if (parsed.status === 'APPLY_FILE_CHANGE' && parsed.data?.filename && parsed.data?.content !== undefined) {
            const fullPath = path.join(projectDir, parsed.data.filename);
            const decoded = Buffer.from(parsed.data.content, 'base64');
            fs.mkdirSync(path.dirname(fullPath), { recursive: true });
            fs.writeFileSync(fullPath, decoded);
            process.stderr.write(`[MCP-TOOL] Saved changes to disk: ${fullPath}\n`);
-        } else if (parsed.status === 'PROGRESS_UPDATES') {
-           process.stderr.write(`[MCP-TOOL] Progress: ${parsed.completed_status_message}\n`);
-        } else if (parsed.status === 'WORK_LOG') {
+        } else if (parsed.status === 'PROGRESS_UPDATES' || parsed.type === 'PROGRESS_UPDATE') {
+           process.stderr.write(`[MCP-TOOL] Progress: ${parsed.completed_status_message || parsed.message}\n`);
+        } else if (parsed.status === 'WORK_LOG' || parsed.type === 'WORK_LOG') {
            process.stderr.write(`[MCP-TOOL] Log: ${parsed.message}\n`);
         }
       } catch {
