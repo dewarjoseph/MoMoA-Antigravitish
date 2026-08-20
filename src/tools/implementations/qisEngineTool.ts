@@ -21,13 +21,42 @@ export interface QISTuneParams {
 }
 
 export interface QISDataParams {
-    text: string;
+    text_input: string;
 }
 
 export interface EngineResponse {
     success: boolean;
     result: string;
     telemetry_dump?: any;
+}
+
+export async function ensureTrainServerRunning(localStore: LocalStoreManager): Promise<void> {
+    const uniqueId = crypto.randomUUID();
+    const requestFilePath = `.swarm/ipc/req_status_${uniqueId}.json`;
+    const responseFilePath = `.swarm/ipc/res_${uniqueId}.json`;
+    
+    localStore.writeState(requestFilePath, { timestamp: Date.now() });
+    
+    let running = false;
+    for (let i = 0; i < 15; i++) {
+        if (localStore.readState(responseFilePath)) {
+            running = true;
+            break;
+        }
+        await new Promise(r => setTimeout(r, 100));
+    }
+    
+    localStore.deleteFile(requestFilePath);
+    localStore.deleteFile(responseFilePath);
+    
+    if (!running) {
+        console.error('[QIS] train_server.py not responding. Spawning...');
+        const workDir = process.env.MOMO_WORKING_DIR || process.cwd();
+        const absoluteTrainServerPath = path.resolve(workDir, '../QIS/train_server.py');
+        const trainServerCwd = path.dirname(absoluteTrainServerPath);
+        processRegistry.spawn('py', [absoluteTrainServerPath], { cwd: trainServerCwd });
+        await new Promise(r => setTimeout(r, 2000));
+    }
 }
 
 
@@ -43,26 +72,28 @@ export const qisInjectDataTool: MultiAgentTool = {
 
         const dataParams = params as QISDataParams;
 
-        if (!dataParams || !dataParams.text) {
-            const errRes: EngineResponse = { success: false, result: "Error: Missing 'text' parameter" };
+        if (!dataParams || !dataParams.text_input) {
+            const errRes: EngineResponse = { success: false, result: "Error: Missing 'text_input' parameter" };
             if (span && context.tracer) {
-                context.tracer.endSpan(span, SpanStatus.ERROR, { errorMessage: 'Missing text parameter' });
+                context.tracer.endSpan(span, SpanStatus.ERROR, { errorMessage: 'Missing text_input parameter' });
             }
             return { result: JSON.stringify(errRes) };
         }
 
         const localStore = new LocalStoreManager();
+        await ensureTrainServerRunning(localStore);
+        
         const uniqueId = crypto.randomUUID();
         const requestFilePath = `.swarm/ipc/req_inject_text_${uniqueId}.json`;
         const responseFilePath = `.swarm/ipc/res_${uniqueId}.json`;
         const pollingIntervalMs = 100;
-        const maxPollingTimeMs = 30000; // 30 seconds
+        const maxPollingTimeMs = 1200000; // 20 minutes
 
         try {
             // 1. Write request file
             const requestData = {
                 timestamp: Date.now(),
-                text_input: dataParams.text,
+                text_input: dataParams.text_input,
             };
             localStore.writeState(requestFilePath, requestData);
             console.error(`[QIS_INJECT_DATA] Request file written to ${requestFilePath}`);
@@ -108,7 +139,7 @@ export const qisInjectDataTool: MultiAgentTool = {
         }
     },
     async extractParameters(invocation: string, _context: MultiAgentToolContext): Promise<ToolParsingResult> {
-        return { success: true, params: { text: invocation } };
+        return { success: true, params: { text_input: invocation } };
     }
 }
 
@@ -124,11 +155,13 @@ export const qisGetGrammarTool: MultiAgentTool = {
         }
 
         const localStore = new LocalStoreManager();
+        await ensureTrainServerRunning(localStore);
+        
         const uniqueId = crypto.randomUUID();
         const requestFilePath = `.swarm/ipc/req_grammar_${uniqueId}.json`;
         const responseFilePath = `.swarm/ipc/res_${uniqueId}.json`;
         const pollingIntervalMs = 100;
-        const maxPollingTimeMs = 30000; // 30 seconds
+        const maxPollingTimeMs = 1200000; // 20 minutes
 
         try {
             // 1. Write request file (empty or with a timestamp as no specific params are needed)
@@ -197,11 +230,13 @@ export const qisAnalyzeEpiphanyTool: MultiAgentTool = {
         }
 
         const localStore = new LocalStoreManager();
+        await ensureTrainServerRunning(localStore);
+        
         const uniqueId = crypto.randomUUID();
         const requestFilePath = `.swarm/ipc/req_analyze_${uniqueId}.json`;
         const responseFilePath = `.swarm/ipc/res_${uniqueId}.json`;
         const pollingIntervalMs = 100;
-        const maxPollingTimeMs = 30000; // 30 seconds
+        const maxPollingTimeMs = 1200000; // 20 minutes
 
         try {
             // 1. Write request file
@@ -285,5 +320,80 @@ export const qisAnalyzeEpiphanyTool: MultiAgentTool = {
 
     async extractParameters(invocation: string, _context: MultiAgentToolContext): Promise<ToolParsingResult> {
         return { success: true, params: {} };
+    }
+};
+
+export const qisManageServerTool: MultiAgentTool = {
+    displayName: 'QIS Manage Server',
+    name: 'QIS_MANAGE_SERVER',
+
+    async execute(params: any, context: MultiAgentToolContext): Promise<MultiAgentToolResult> {
+        let span: any;
+        if (context.tracer && context.activeTraceContext) {
+            span = context.tracer.startSpan(context.activeTraceContext, 'QIS_MANAGE_SERVER', SpanKind.TOOL);
+        }
+
+        const action = params?.action; // "clear_state" or "shutdown"
+        if (action !== "clear_state" && action !== "shutdown") {
+            const errRes: EngineResponse = { success: false, result: `Error: Invalid action '${action}'. Expected 'clear_state' or 'shutdown'.` };
+            if (span && context.tracer) {
+                context.tracer.endSpan(span, SpanStatus.ERROR, { errorMessage: 'Invalid action' });
+            }
+            return { result: JSON.stringify(errRes) };
+        }
+
+        const localStore = new LocalStoreManager();
+        await ensureTrainServerRunning(localStore);
+        
+        const uniqueId = crypto.randomUUID();
+        const requestFilePath = `.swarm/ipc/req_${action}_${uniqueId}.json`;
+        const responseFilePath = `.swarm/ipc/res_${uniqueId}.json`;
+        const pollingIntervalMs = 100;
+        const maxPollingTimeMs = 5000;
+
+        try {
+            const requestData = { timestamp: Date.now() };
+            localStore.writeState(requestFilePath, requestData);
+
+            let responseData: any | null = null;
+            const startTime = Date.now();
+            while (Date.now() - startTime < maxPollingTimeMs) {
+                responseData = localStore.readState(responseFilePath);
+                if (responseData) {
+                    break;
+                }
+                await new Promise(resolve => setTimeout(resolve, pollingIntervalMs));
+            }
+
+            if (!responseData && action !== "shutdown") {
+                 throw new Error(`Timeout: No response file found at ${responseFilePath} within ${maxPollingTimeMs}ms.`);
+            }
+
+            // For shutdown, it might delete the file before we read it, or exit before responding if the race condition favors the exit.
+            const data = responseData || { status: 'success', detail: 'Shutdown command sent (no response collected before process exit)' };
+            const res: EngineResponse = { success: data.status === 'success' || data.status === undefined, result: JSON.stringify(data), telemetry_dump: data };
+
+            if (span && context.tracer) {
+                if (data.status === 'error') {
+                    context.tracer.endSpan(span, SpanStatus.ERROR, { errorMessage: data.detail });
+                } else {
+                    context.tracer.endSpan(span, SpanStatus.OK);
+                }
+            }
+            return { result: JSON.stringify(res) };
+        } catch (err: any) {
+             const errRes: EngineResponse = { success: false, result: `Error during QIS Manage Server: ${err.message}` };
+             if (span && context.tracer) {
+                 context.tracer.endSpan(span, SpanStatus.ERROR, { errorMessage: err.message });
+             }
+             return { result: JSON.stringify(errRes) };
+        } finally {
+            localStore.deleteFile(requestFilePath);
+            localStore.deleteFile(responseFilePath);
+        }
+    },
+
+    async extractParameters(invocation: string, _context: MultiAgentToolContext): Promise<ToolParsingResult> {
+        return { success: true, params: { action: invocation.trim() } };
     }
 };

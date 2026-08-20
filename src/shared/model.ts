@@ -39,6 +39,11 @@ export interface UserSecrets {
   stitchApiKey: string;
   e2BApiKey: string;
   githubScratchPadRepo: string;
+  remoteDesktopKey?: string;
+  googleAccessToken?: string;
+  gcpProjectId?: string;
+  sshTunnelUrl?: string;
+  cloudWorkstationName?: string;
 }
 
 /**

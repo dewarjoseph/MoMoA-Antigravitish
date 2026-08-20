@@ -16,12 +16,14 @@
 
 import { MultiAgentTool } from '../multiAgentTool.js';
 import { addFAQ } from '../../utils/faqs.js';
-import { MultiAgentToolContext, MultiAgentToolResult, ToolParsingResult } from '../../momoa_core/types.js';
+import { MultiAgentToolContext, MultiAgentToolResult, ToolExecutionEnvironmentType, ToolParsingResult } from '../../momoa_core/types.js';
 import { DEFAULT_GEMINI_FLASH_MODEL, DEFAULT_GEMINI_LITE_MODEL, DEFAULT_GEMINI_PRO_MODEL } from '../../config/models.js';
 import { removeBacktickFences } from '../../utils/markdownUtils.js';
 import { getAssetString, getToolPreamblePrompt, replaceRuntimePlaceholders } from '../../services/promptManager.js';
 import { TranscriptManager } from '../../services/transcriptManager.js';
 import { Part } from '@google/genai';
+import { ExecutionRequest } from '../../services/executionProvider.js';
+import { LocalExecutionProvider } from '../../services/executionProviders/localExecutionProvider.js';
 
 /**
  * Helper function to fetch content from a URL and summarize it using an LLM.
@@ -73,6 +75,38 @@ ${data}`;
  
   return result;
 }
+
+async function localLookup(question: string, context: MultiAgentToolContext): Promise<string> {
+  const localQuery = `"${question}"`;
+
+  context.sendMessage({
+    type: "PROGRESS_UPDATE",
+    message: `Dispatching local agent to find facts.`,
+  });
+  
+  let provider = new LocalExecutionProvider();
+  const executionRequest: ExecutionRequest = {
+      command: 'node',
+      args: ['local_fact_finder.js', localQuery], 
+  }
+
+  const execResult = await provider.execute(executionRequest);
+
+  // Safely capture stdout, falling back to stderr or a generic error if the script failed
+  let execResultString = execResult.stdout.trim();
+  
+  if (!execResultString || execResult.exitCode !== 0) {
+      const errorDetails = execResult.stderr || execResult.error || "Unknown execution failure";
+      execResultString = `Error executing local agent: ${errorDetails}`;
+  }
+
+  context.sendMessage({
+    type: "PROGRESS_UPDATE",
+    message: `The local agent says:\n${execResultString}`,
+  });
+
+  return execResultString;
+}
  
 /**
  * Implements the Fact Finder Tool, which consolidates information from project files (Docs)
@@ -97,15 +131,14 @@ export const factFinderTool: MultiAgentTool = {
 
     await updateLog(`${this.displayName} Invoked for question: ${question}`);
  
-    let providedInformation = "---No Additional Information Provided---";
     let internetSearchResult = "Internet Search Provided No Useful Results";
  
     // --- 2. Internet Search Part ---
     try {
-      context.sendMessage(JSON.stringify({
-        status: "PROGRESS_UPDATES",
-        completed_status_message: `Performing multi-turn Internet Search.`,
-      }));
+      context.sendMessage({
+        type: 'PROGRESS_UPDATE',
+        message: `Performing multi-turn Internet Search.`,
+      });
 
       const internetLookupToolString = 
 `You are an Internet search expert that can use a tool to look up information on the Internet. This is generally limited to URLs that represent APIs that don't require any authentication, and many websites won't be accessible to you. If you try to access a website and get a response that the Fetch Failed you should assume it's because you don't have permission to see it and just accept that you can't see it. Requests for internet lookups require both a URL to look at, and a question you want to get answered from that page.
@@ -200,15 +233,16 @@ ${question}`;
       internetSearchResult = `Internet Search Failed Due to Error: ${errorMessage}`;
     }
  
+    const localLookupResult = await localLookup(question, context);
  
     // --- 3. Final Synthesis ---
-    context.sendMessage(JSON.stringify({
-      status: "PROGRESS_UPDATES",
-      completed_status_message: `Synthesizing final answer using all gathered facts.`,
-    }));
- 
+    context.sendMessage({
+      type: 'PROGRESS_UPDATE',
+      message: `Synthesizing final answer using all gathered facts.`,
+    });
+
     const replacementValues = {
-      ExplicitlyProvided: providedInformation,
+      ExplicitlyProvided: localLookupResult,
       SearchResults: internetSearchResult,
       Question: question
     };
@@ -254,18 +288,16 @@ ${question}`;
       LastOrchestratorResponse: result
     });
         
-    let opinionSummary = ""
     try {
-      opinionSummary = (await context.multiAgentGeminiClient.sendOneShotMessage(
+      const opinionSummary = await context.multiAgentGeminiClient.sendOneShotMessage(
         completed_status_message_prompt,
         { model: DEFAULT_GEMINI_LITE_MODEL, signal: context.signal }
-      ))?.text || "";
+      ).then(msg => msg.text || "");
+      context.sendMessage({
+        type: "PROGRESS_UPDATE",
+        message: opinionSummary,
+      });
     } catch (_error) {}
-
-    context.sendMessage(JSON.stringify({
-      status: "PROGRESS_UPDATES",
-      completed_status_message: opinionSummary,
-    }));
  
     // --- 4. FAQ Update ---
     await addFAQ(question, result, context);

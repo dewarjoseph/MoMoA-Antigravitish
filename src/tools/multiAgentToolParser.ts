@@ -15,7 +15,7 @@
  */
 
 import { MultiAgentToolContext } from '../momoa_core/types.js';
-// Dynamic import used later: import { getTool, getToolNames } from './multiAgentToolRegistry.js';
+import { getTool, getToolNames } from './multiAgentToolRegistry.js';
 
 /**
  * Interface representing a parsed tool request from an LLM response.
@@ -52,8 +52,7 @@ function escapeRegExp(str: string): string {
  * @returns {{toolName: string, params: any} | undefined} An object with the tool name and extracted parameters, an error string, or undefined if no valid invocation is found.
  */
 export async function parseToolRequest(text: string, toolPrefix: string, context: MultiAgentToolContext): Promise<MultiAgentToolRequest | string | undefined> {
-  const registry = await import('./multiAgentToolRegistry.js');
-  const toolNames = registry.getToolNames();
+  const toolNames = getToolNames();
 
   if (!toolNames || toolNames.length === 0) {
     return undefined;
@@ -93,7 +92,7 @@ export async function parseToolRequest(text: string, toolPrefix: string, context
   const invocationString = text.substring(startIndex, endIndex).trim();
 
   // 7. Use the rest of your logic to get the tool and extract its parameters.
-  const foundTool = registry.getTool(toolName);
+  const foundTool = getTool(toolName);
   if (!foundTool) {
     return undefined; // Safeguard in case tool name is not in the registry
   }
