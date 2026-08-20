@@ -71,6 +71,16 @@ export enum VerbosityType {
   Quiet = 'QUIET'
 }
 
+export enum ToolExecutionEnvironmentType {
+  Local = "LOCAL",
+  CloudRun = "CLOUDRUN",
+  CloudShellEditor = "CLOUDSHELLEDITOR",
+  CloudWorkstation = "CLOUDWORKSTATION",
+  E2B = "E2B",
+  Inverse_SSH_Tunnel = "INVERSE_SSH_TUNNEL",
+  Remote_Desktop_Agent = "REMOTE_DESKTOP_AGENT"
+}
+
 export interface MultiAgentToolContext {
   initialPrompt: string;
   initialImage?: string;
@@ -108,6 +118,7 @@ export interface MultiAgentToolContext {
   hitlManager?: HitlManager;
   tracer?: SwarmTracer;
   activeTraceContext?: TraceContext;
+  toolExecutionEnvironment?: string;
   sessionTitle?: string;
 }
 
