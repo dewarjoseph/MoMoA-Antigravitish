@@ -66,7 +66,7 @@ export async function ensureTrainServerRunning(localStore: LocalStoreManager): P
     localStore.writeState(requestFilePath, { timestamp: Date.now() });
     
     let running = false;
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 20; i++) {
         if (localStore.readState(responseFilePath)) {
             running = true;
             break;
@@ -125,7 +125,7 @@ export const qisInjectDataTool: MultiAgentTool = {
         const requestFilePath = `.swarm/ipc/req_inject_text_${uniqueId}.json`;
         const responseFilePath = `.swarm/ipc/res_${uniqueId}.json`;
         const pollingIntervalMs = 50;
-        const maxPollingTimeMs = 5000; // 5 seconds bounded timeout
+        const maxPollingTimeMs = 15000; // 15 seconds bounded timeout for model encoding
 
         try {
             // 1. Write request file
@@ -199,7 +199,7 @@ export const qisGetGrammarTool: MultiAgentTool = {
         const requestFilePath = `.swarm/ipc/req_grammar_${uniqueId}.json`;
         const responseFilePath = `.swarm/ipc/res_${uniqueId}.json`;
         const pollingIntervalMs = 50;
-        const maxPollingTimeMs = 5000; // 5 seconds bounded timeout
+        const maxPollingTimeMs = 15000; // 15 seconds bounded timeout
 
         try {
             // 1. Write request file (empty or with a timestamp as no specific params are needed)
@@ -274,7 +274,7 @@ export const qisAnalyzeEpiphanyTool: MultiAgentTool = {
         const requestFilePath = `.swarm/ipc/req_analyze_${uniqueId}.json`;
         const responseFilePath = `.swarm/ipc/res_${uniqueId}.json`;
         const pollingIntervalMs = 50;
-        const maxPollingTimeMs = 5000; // 5 seconds bounded timeout
+        const maxPollingTimeMs = 15000; // 15 seconds bounded timeout
 
         try {
             // 1. Write request file

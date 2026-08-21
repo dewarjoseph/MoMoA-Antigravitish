@@ -89,7 +89,13 @@ program
   .option('--mcp-config <path>', 'Path to mcp_servers.json for dynamic MCP server discovery')
   .option('--no-self-healing', 'Disable the autonomous self-healing execution loop')
   .action(async (opts) => {
-    const projectDir = path.resolve(opts.dir);
+    const rawDir = opts.dir || process.env.MOMO_WORKING_DIR;
+    let projectDir: string;
+    if (rawDir && !rawDir.includes('Antigravity IDE')) {
+      projectDir = path.resolve(rawDir);
+    } else {
+      projectDir = path.resolve(__dirname, '..');
+    }
     const mcpConfigPath = opts.mcpConfig ? path.resolve(opts.mcpConfig) : undefined;
     
     if (opts.selfHealing === false) {

@@ -144,36 +144,46 @@ export const fileSearchTool: MultiAgentTool = {
       matchedFiles.add(file);
     }
 
-    // 2. Search live filesystem at active workspace directory
-    const workspaceRoot = process.env.MOMO_WORKING_DIR || process.cwd();
-    const { contentMatches, nameMatches } = await searchLiveDisk(workspaceRoot, rawQuery, 60);
-
-    for (const match of nameMatches) {
-      matchedFiles.add(match);
-      // Register into context fileMap for seamless subsequent tool access
-      if (!context.fileMap.has(match)) {
-        context.fileMap.set(match, '');
-      }
-    }
-
-    // Group content matches by file
+    // 2. Search live filesystem at active workspace directories
+    const primaryDir = params.workspace_path || params.dir || process.env.MOMO_WORKING_DIR || (process.cwd().includes('Antigravity IDE') ? path.resolve(__dirname, '../../..') : process.cwd());
+    const candidateDirs = [
+      path.resolve(primaryDir),
+      'C:/Users/Joe/source/MoMoA-Antigravitish',
+      'C:/Users/Joe/source/QIS',
+    ];
+    const uniqueSearchDirs = Array.from(new Set(candidateDirs)).filter(d => fs.existsSync(d));
     const fileToSnippets = new Map<string, Array<{ line: number; snippet: string }>>();
-    for (const match of contentMatches) {
-      matchedFiles.add(match.file);
-      if (!fileToSnippets.has(match.file)) {
-        fileToSnippets.set(match.file, []);
-      }
-      fileToSnippets.get(match.file)!.push({ line: match.line, snippet: match.snippet });
+    const allNameMatches: string[] = [];
+    let totalContentMatches = 0;
 
-      // Register into context fileMap
-      if (!context.fileMap.has(match.file)) {
-        context.fileMap.set(match.file, '');
+    for (const searchDir of uniqueSearchDirs) {
+      const { contentMatches, nameMatches } = await searchLiveDisk(searchDir, rawQuery, 60);
+
+      for (const match of nameMatches) {
+        matchedFiles.add(match);
+        allNameMatches.push(match);
+        if (!context.fileMap.has(match)) {
+          context.fileMap.set(match, '');
+        }
+      }
+
+      for (const match of contentMatches) {
+        matchedFiles.add(match.file);
+        totalContentMatches++;
+        if (!fileToSnippets.has(match.file)) {
+          fileToSnippets.set(match.file, []);
+        }
+        fileToSnippets.get(match.file)!.push({ line: match.line, snippet: match.snippet });
+
+        if (!context.fileMap.has(match.file)) {
+          context.fileMap.set(match.file, '');
+        }
       }
     }
 
     // Format output
     if (fileToSnippets.size > 0) {
-      results.push(`### Content Matches (${contentMatches.length} matches in ${fileToSnippets.size} files):`);
+      results.push(`### Content Matches (${totalContentMatches} matches in ${fileToSnippets.size} files):`);
       for (const [file, snippets] of fileToSnippets.entries()) {
         results.push(`\n📁 **\`${file}\`**`);
         for (const s of snippets) {
@@ -183,7 +193,7 @@ export const fileSearchTool: MultiAgentTool = {
     }
 
     // Add filename-only matches
-    const nameOnlyMatches = nameMatches.filter(f => !fileToSnippets.has(f));
+    const nameOnlyMatches = allNameMatches.filter(f => !fileToSnippets.has(f));
     if (nameOnlyMatches.length > 0) {
       results.push(`\n### Filename Matches (${nameOnlyMatches.length} files):`);
       for (const file of nameOnlyMatches.slice(0, 30)) {
@@ -196,7 +206,7 @@ export const fileSearchTool: MultiAgentTool = {
 
     const outputText = results.length > 0
       ? results.join('\n')
-      : `No matches found for query '${rawQuery}' in workspace: ${workspaceRoot}`;
+      : `No matches found for query '${rawQuery}' in workspace: ${primaryDir}`;
 
     context.sendMessage({
       type: 'PROGRESS_UPDATE',

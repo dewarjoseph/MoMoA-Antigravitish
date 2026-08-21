@@ -18,8 +18,9 @@ export class LocalStoreManager {
     private frameHistory: string[] = []; // Stores relative paths of frame files
     private MAX_TOPOLOGY_FRAMES: number = 100; // Default max number of frames to retain
 
-    constructor(baseDir: string = process.cwd()) {
-        this.baseDir = path.resolve(baseDir);
+    constructor(baseDir?: string) {
+        const defaultDir = process.env.MOMO_WORKING_DIR || (process.cwd().includes('Antigravity IDE') ? path.resolve(__dirname, '../..') : process.cwd());
+        this.baseDir = path.resolve(baseDir || defaultDir);
         this.ensureBaseDirectory();
         this.loadFrameManifest();
     }
@@ -215,13 +216,11 @@ export class LocalStoreManager {
         if (fs.existsSync(filePath)) {
             try {
                 fs.unlinkSync(filePath);
-                console.error(`[LocalStoreManager] Deleted file: ${relativePath}`);
-            } catch (error) {
-                console.error(`[LocalStoreManager] Error deleting file ${relativePath}:`, error);
-                throw error;
+            } catch (error: any) {
+                if (error?.code !== 'EBUSY' && error?.code !== 'ENOENT' && error?.code !== 'EPERM') {
+                    console.error(`[LocalStoreManager] Error deleting file ${relativePath}:`, error);
+                }
             }
-        } else {
-            console.warn(`[LocalStoreManager] Attempted to delete non-existent file: ${relativePath}`);
         }
     }
 

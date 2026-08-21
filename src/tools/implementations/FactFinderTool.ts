@@ -155,7 +155,18 @@ async function localLookup(question: string, context: MultiAgentToolContext): Pr
     } catch {}
   }
 
-  await walk(workspaceRoot);
+  const primaryDir = process.env.MOMO_WORKING_DIR || (process.cwd().includes('Antigravity IDE') ? path.resolve(__dirname, '../../..') : process.cwd());
+  const candidateDirs = [
+    path.resolve(primaryDir),
+    'C:/Users/Joe/source/MoMoA-Antigravitish',
+    'C:/Users/Joe/source/QIS',
+  ];
+  const uniqueSearchDirs = Array.from(new Set(candidateDirs)).filter(d => fs.existsSync(d));
+
+  for (const workspaceRoot of uniqueSearchDirs) {
+    await walk(workspaceRoot);
+    if (matchedSnippets.length >= 20) break;
+  }
 
   if (matchedSnippets.length === 0 && matchedDocs.length === 0) {
     return "No directly matching definitions or documentation found in local codebase.";

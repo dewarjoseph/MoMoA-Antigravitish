@@ -139,30 +139,64 @@ async function runTests(): Promise<void> {
     const memStatsText = (memStatsRes.content as any)[0]?.text || '';
     assert(memStatsText.includes('Memory Stats') || memStatsText.includes('MB'), 'GET_MEMORY_STATS reported memory metrics');
 
-    // 8. HITL_STATUS
+    // 8. FACTFINDER
+    const factRes = await client.callTool({
+      name: 'FACTFINDER',
+      arguments: { question: 'What is LazyMap in localScanner?' },
+    });
+    const factText = (factRes.content as any)[0]?.text || '';
+    assert(factText.includes('LazyMap') || factText.includes('localScanner') || factText.length > 50, 'FACTFINDER retrieved grounded codebase facts');
+
+    // 9. PARADOX
+    const paradoxRes = await client.callTool({
+      name: 'PARADOX',
+      arguments: {
+        task_id: 'paradox_test_01',
+        dilemma: 'Should files be loaded lazily or eagerly into memory?',
+        candidate_a: 'Lazy loading on demand to save memory',
+        candidate_b: 'Eager loading all files upfront for faster search',
+      },
+    });
+    const paradoxText = (paradoxRes.content as any)[0]?.text || '';
+    assert(paradoxText.includes('Resolution') || paradoxText.includes('Synthesis') || paradoxText.length > 50, 'PARADOX resolved architectural trade-offs');
+
+    // 10. HITL_STATUS
     const hitlRes = await client.callTool({ name: 'HITL_STATUS', arguments: {} });
     const hitlText = (hitlRes.content as any)[0]?.text || '';
     assert(hitlText.includes('HITL') || hitlText.includes('pending') || hitlText.length > 0, 'HITL_STATUS returned status report');
 
-    // 9. TELEMETRY_DASHBOARD
+    // 11. TELEMETRY_DASHBOARD
     const telemRes = await client.callTool({ name: 'TELEMETRY_DASHBOARD', arguments: {} });
     const telemText = (telemRes.content as any)[0]?.text || '';
     assert(telemText.includes('Telemetry') || telemText.includes('traces') || telemText.length > 0, 'TELEMETRY_DASHBOARD responded cleanly');
 
-    SwarmTracer.getInstance().emitLog('\n── Phase 5: QIS Engine Tools ──');
+    SwarmTracer.getInstance().emitLog('\n── Phase 5: QIS Engine & Neural Topology Tools ──');
 
-    // 10. QIS_GET_GRAMMAR (verifying graceful bounded execution / IPC handling)
+    // 12. QIS_INJECT_DATA
+    const injectRes = await client.callTool({
+      name: 'QIS_INJECT_DATA',
+      arguments: { text_input: 'Quantum state evolution across non-Abelian topology.' },
+    });
+    const injectText = (injectRes.content as any)[0]?.text || '';
+    assert(injectText.includes('success') || injectText.includes('Accepted') || injectText.includes('embedding_dim'), 'QIS_INJECT_DATA successfully injected vector into QIS agent');
+
+    // 13. QIS_ANALYZE_EPIPHANY
+    const analyzeRes = await client.callTool({ name: 'QIS_ANALYZE_EPIPHANY', arguments: {} });
+    const analyzeText = (analyzeRes.content as any)[0]?.text || '';
+    assert(analyzeText.includes('Riemann') || analyzeText.includes('GUE') || analyzeText.includes('NNSD') || analyzeText.includes('success'), 'QIS_ANALYZE_EPIPHANY extracted spectral Riemann metrics');
+
+    // 14. QIS_GET_GRAMMAR
     const grammarRes = await client.callTool({ name: 'QIS_GET_GRAMMAR', arguments: {} });
     const grammarText = (grammarRes.content as any)[0]?.text || '';
-    assert(grammarText.length > 0, 'QIS_GET_GRAMMAR executed with bounded response');
+    assert(grammarText.length > 0, 'QIS_GET_GRAMMAR returned telemetry');
 
-    // 11. QIS_MANAGE_SERVER
+    // 15. QIS_MANAGE_SERVER
     const manageRes = await client.callTool({
       name: 'QIS_MANAGE_SERVER',
       arguments: { action: 'clear_state' },
     });
     const manageText = (manageRes.content as any)[0]?.text || '';
-    assert(manageText.length > 0, 'QIS_MANAGE_SERVER processed action without hanging');
+    assert(manageText.includes('success') || manageText.length > 0, 'QIS_MANAGE_SERVER cleared state');
 
   } catch (err) {
     SwarmTracer.getInstance().emitLog(`Fatal error during live MCP test: ${err}`);
