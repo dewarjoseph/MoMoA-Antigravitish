@@ -239,13 +239,28 @@ export async function getToolPreamblePrompt(name: string): Promise<string> {
  */
 export async function getAssetString(name: string): Promise<string> {
   await ready;
-  // Find the string by its 'name' metadata field
+  // Find the string by its 'name' metadata field or path key
   for (const [key, prompt] of resolvedPrompts.entries()) {
-    if (key.startsWith('strings/') && toKebabCase(prompt.metadata.name) === toKebabCase(name)) {
+    if (
+      (key.startsWith('strings/') && toKebabCase(prompt.metadata.name) === toKebabCase(name)) ||
+      key === `strings/${name}` ||
+      key === name ||
+      toKebabCase(key.replace(/^strings\//, '')) === toKebabCase(name)
+    ) {
       return prompt.content;
     }
   }
-  throw new Error(`String with name "${name}" not found.`);
+  // Fallback: search across all prompt categories
+  for (const [key, prompt] of resolvedPrompts.entries()) {
+    if (
+      toKebabCase(prompt.metadata.name) === toKebabCase(name) ||
+      key.endsWith(`/${name}`) ||
+      key === name
+    ) {
+      return prompt.content;
+    }
+  }
+  return '';
 }
 
 /**
