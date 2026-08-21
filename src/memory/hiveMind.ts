@@ -34,8 +34,8 @@ export class HiveMind {
     this.config = { ...DEFAULT_HIVE_MIND_CONFIG, ...config };
 
     // Resolve storage directory to absolute path based on working directory
+    const workDir = process.env.MOMO_WORKING_DIR || process.cwd();
     if (!path.isAbsolute(this.config.storageDir)) {
-      const workDir = process.env.MOMO_WORKING_DIR || process.cwd();
       this.config.storageDir = path.resolve(workDir, this.config.storageDir);
     }
 
@@ -46,8 +46,17 @@ export class HiveMind {
 
   /** Get or create the singleton HiveMind instance */
   static getInstance(config?: Partial<HiveMindConfig>, apiKey?: string): HiveMind {
+    const currentWorkDir = process.env.MOMO_WORKING_DIR || process.cwd();
     if (!HiveMind.instance) {
       HiveMind.instance = new HiveMind(config, apiKey);
+    } else {
+      // Re-anchor if current working directory changed
+      const expectedStorage = path.resolve(currentWorkDir, config?.storageDir || DEFAULT_HIVE_MIND_CONFIG.storageDir);
+      if (HiveMind.instance.config.storageDir !== expectedStorage) {
+        HiveMind.instance.config.storageDir = expectedStorage;
+        HiveMind.instance.ensureStorageDir();
+        HiveMind.instance.loadMemories();
+      }
     }
     return HiveMind.instance;
   }

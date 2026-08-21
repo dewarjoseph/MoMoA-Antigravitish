@@ -61,8 +61,9 @@ export const smartFileEditorTool: MultiAgentTool = {
         context.overseer?.addLog(message);
     };
 
-    const filename = params.filename;
-    const originalEditRequest = params.editRequest;
+    const rawFilename = params.filename || params.path || params.file || '';
+    const filename = String(rawFilename).trim();
+    const originalEditRequest = params.editRequest || params.content || params.instructions || params.edit || '';
 
     if (filename) {
       addDynamicallyRelevantFile(filename);

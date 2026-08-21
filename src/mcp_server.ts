@@ -93,7 +93,9 @@ async function buildLocalContext(
       try {
         const parsed = typeof msg === 'string' ? JSON.parse(msg) : msg;
         if (parsed.status === 'APPLY_FILE_CHANGE' && parsed.data?.filename && parsed.data?.content !== undefined) {
-           const fullPath = path.join(projectDir, parsed.data.filename);
+           const rawFile = parsed.data.filename;
+           const currentWorkDir = process.env.MOMO_WORKING_DIR || projectDir || process.cwd();
+           const fullPath = path.isAbsolute(rawFile) ? rawFile : path.resolve(currentWorkDir, rawFile);
            const decoded = Buffer.from(parsed.data.content, 'base64');
            fs.mkdirSync(path.dirname(fullPath), { recursive: true });
            fs.writeFileSync(fullPath, decoded);
@@ -171,9 +173,16 @@ export async function createMcpServer(
       mcpToolName,
       `[${tool.displayName}] native overseer binding`,
       toolSchema,
-      async (args) => {
+      async (args: any) => {
         try {
           process.stderr.write(`[MoMo-MCP] EXECUTING TOOL ${mcpToolName} with ARGS: ${JSON.stringify(args)}\n`);
+
+          // Dynamically re-anchor workspace if caller provided workspace/dir path
+          const explicitDir = args.workspace_path || args.workspace || args.projectDir || args.dir || args.targetDir;
+          if (explicitDir && typeof explicitDir === 'string') {
+            process.env.MOMO_WORKING_DIR = path.resolve(explicitDir);
+          }
+
           // If we mapped specific properties, `args` carries them natively inside an object.
           // Fallback legacy if params string is present, otherwise use native args object.
           let executeParams: any = args;
@@ -190,6 +199,32 @@ export async function createMcpServer(
                       expected: true,
                       type: 'validate'
                   }]
+              };
+          } else if (mcpToolName === 'PARADOX') {
+              executeParams = {
+                  ...executeParams,
+                  question: args.paradox || args.question || args.statement || args.query,
+                  paradox: args.paradox || args.question || args.statement || args.query,
+              };
+          } else if (mcpToolName === 'FACTFINDER') {
+              executeParams = {
+                  ...executeParams,
+                  question: args.question || args.query || args.prompt || args.text,
+              };
+          } else if (mcpToolName === 'FILESEARCH_query') {
+              executeParams = {
+                  ...executeParams,
+                  query: args.query || args.search || args.pattern || args.text,
+              };
+          } else if (mcpToolName === 'QUERY_HIVE_MIND') {
+              executeParams = {
+                  ...executeParams,
+                  query: args.query || args.search || args.text,
+              };
+          } else if (mcpToolName === 'PHONEAFRIEND') {
+              executeParams = {
+                  ...executeParams,
+                  question: args.question || args.query || args.prompt || args.text,
               };
           }
           

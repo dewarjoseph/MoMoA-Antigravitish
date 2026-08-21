@@ -156,7 +156,7 @@ export const CodeRunnerTool: MultiAgentTool = {
 
             // 3. Stage Files
             const stageFile = async (fileName: string) => {
-                 const content = context.fileMap.get(fileName);
+                 let content = context.fileMap.get(fileName);
                  const targetPath = path.join(tempDir, fileName);
                  const targetDir = path.dirname(targetPath);
 
@@ -168,7 +168,14 @@ export const CodeRunnerTool: MultiAgentTool = {
                          await fs.writeFile(targetPath, buf);
                          return;
                      }
-                     throw new Error(`File '${fileName}' not found in context.`);
+                     // Check live disk fallback
+                     const liveCandidate = path.isAbsolute(fileName) ? fileName : path.resolve(projectRoot, fileName);
+                     try {
+                         const diskBuf = await fs.readFile(liveCandidate);
+                         await fs.writeFile(targetPath, diskBuf);
+                         return;
+                     } catch {}
+                     throw new Error(`File '${fileName}' not found in context or on disk.`);
                  }
                  await fs.writeFile(targetPath, content, 'utf8');
             };

@@ -192,11 +192,12 @@ export const LintTool: MultiAgentTool = {
    * @returns The linter output.
    */
   async execute(params: Record<string, unknown>, context: MultiAgentToolContext): Promise<MultiAgentToolResult> {
-    const providedFilename = params['filename'] as string;
+    const rawFilename = params.filename || params.path || params.file || (typeof params === 'string' ? params : '');
+    const providedFilename = String(rawFilename).trim();
 
     if (!providedFilename) {
       return {
-        result: `Error: 'filename' parameter is missing for ${this.displayName} tool.`
+        result: `Error: 'filename' parameter is missing for this tool.`
       };
     }
 
@@ -208,11 +209,11 @@ export const LintTool: MultiAgentTool = {
 
     let filename = providedFilename.trim();
     
-    if (!allFilesMap.has(filename)) {
-        // File not found. NOW, let's try to find a suggestion.
+    if (!allFilesMap.has(filename) && !context.fileMap.has(filename)) {
+        // File not found in cache. Let's try to find a suggestion.
         const suggestion = await fileNameLookup(filename, allFilesMap, context.multiAgentGeminiClient);
 
-        if (suggestion && suggestion !== filename && allFilesMap.has(suggestion)) {
+        if (suggestion && suggestion !== filename && (allFilesMap.has(suggestion) || context.fileMap.has(suggestion))) {
             return {
                 result: `File '${filename}' was not found. Did you mean '${suggestion}'?`
             };

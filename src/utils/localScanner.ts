@@ -15,41 +15,93 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB limit per file
 export class LazyMap extends Map<string, string> {
   private knownKeys = new Set<string>();
 
-  constructor(private baseDir: string, private isBinary: boolean) {
+  constructor(public baseDir: string, private isBinary: boolean) {
     super();
   }
 
   registerKey(key: string) {
-    this.knownKeys.add(key);
+    this.knownKeys.add(key.replace(/\\/g, '/'));
+  }
+
+  private resolveCandidatePath(key: string): string | null {
+    if (!key) return null;
+    const normalizedKey = key.replace(/\\/g, '/');
+
+    // 1. Direct absolute path check
+    if (path.isAbsolute(key) && fs.existsSync(key)) {
+      try {
+        if (fs.statSync(key).isFile()) return key;
+      } catch {}
+    }
+
+    // 2. Relative to baseDir
+    const baseCandidate = path.resolve(this.baseDir, normalizedKey);
+    if (fs.existsSync(baseCandidate)) {
+      try {
+        if (fs.statSync(baseCandidate).isFile()) return baseCandidate;
+      } catch {}
+    }
+
+    // 3. Relative to MOMO_WORKING_DIR if set
+    if (process.env.MOMO_WORKING_DIR) {
+      const momoCandidate = path.resolve(process.env.MOMO_WORKING_DIR, normalizedKey);
+      if (fs.existsSync(momoCandidate)) {
+        try {
+          if (fs.statSync(momoCandidate).isFile()) return momoCandidate;
+        } catch {}
+      }
+    }
+
+    // 4. Relative to current process.cwd()
+    const cwdCandidate = path.resolve(process.cwd(), normalizedKey);
+    if (fs.existsSync(cwdCandidate)) {
+      try {
+        if (fs.statSync(cwdCandidate).isFile()) return cwdCandidate;
+      } catch {}
+    }
+
+    return null;
   }
 
   override has(key: string): boolean {
-    return this.knownKeys.has(key) || super.has(key);
+    if (!key) return false;
+    const normalizedKey = key.replace(/\\/g, '/');
+    if (this.knownKeys.has(normalizedKey) || super.has(normalizedKey) || super.has(key)) {
+      return true;
+    }
+    return this.resolveCandidatePath(key) !== null;
   }
 
   override get(key: string): string | undefined {
+    if (!key) return undefined;
+    const normalizedKey = key.replace(/\\/g, '/');
+    if (super.has(normalizedKey)) return super.get(normalizedKey);
     if (super.has(key)) return super.get(key);
-    
-    if (!this.knownKeys.has(key)) return undefined;
+
+    const resolved = this.resolveCandidatePath(key);
+    if (!resolved) return undefined;
 
     try {
-      const fullPath = path.join(this.baseDir, key);
-      const buffer = fs.readFileSync(fullPath);
+      const buffer = fs.readFileSync(resolved);
       const val = this.isBinary ? buffer.toString('base64') : buffer.toString('utf-8');
+      this.knownKeys.add(normalizedKey);
       return val;
-    } catch (e) {
+    } catch {
       return undefined;
     }
   }
 
   override set(key: string, value: string): this {
-    this.knownKeys.add(key);
-    super.set(key, value);
+    const normalizedKey = key.replace(/\\/g, '/');
+    this.knownKeys.add(normalizedKey);
+    super.set(normalizedKey, value);
     return this;
   }
 
   override delete(key: string): boolean {
-    this.knownKeys.delete(key);
+    const normalizedKey = key.replace(/\\/g, '/');
+    this.knownKeys.delete(normalizedKey);
+    super.delete(normalizedKey);
     return super.delete(key);
   }
 

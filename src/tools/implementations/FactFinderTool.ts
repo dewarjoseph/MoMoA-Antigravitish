@@ -76,36 +76,120 @@ ${data}`;
   return result;
 }
 
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+
 async function localLookup(question: string, context: MultiAgentToolContext): Promise<string> {
-  const localQuery = `"${question}"`;
-
   context.sendMessage({
     type: "PROGRESS_UPDATE",
-    message: `Dispatching local agent to find facts.`,
-  });
-  
-  let provider = new LocalExecutionProvider();
-  const executionRequest: ExecutionRequest = {
-      command: 'node',
-      args: ['local_fact_finder.js', localQuery], 
-  }
-
-  const execResult = await provider.execute(executionRequest);
-
-  // Safely capture stdout, falling back to stderr or a generic error if the script failed
-  let execResultString = execResult.stdout.trim();
-  
-  if (!execResultString || execResult.exitCode !== 0) {
-      const errorDetails = execResult.stderr || execResult.error || "Unknown execution failure";
-      execResultString = `Error executing local agent: ${errorDetails}`;
-  }
-
-  context.sendMessage({
-    type: "PROGRESS_UPDATE",
-    message: `The local agent says:\n${execResultString}`,
+    message: `Searching local codebase and documentation for facts relevant to: "${question.slice(0, 80)}"`,
   });
 
-  return execResultString;
+  const workspaceRoot = process.env.MOMO_WORKING_DIR || process.cwd();
+  
+  // 1. Extract alphanumeric search terms (>= 3 chars) from question
+  const stopWords = new Set(['what', 'when', 'where', 'which', 'about', 'explain', 'tell', 'show', 'find', 'how', 'the', 'and', 'for', 'with', 'from', 'this', 'that', 'does', 'have', 'been']);
+  const rawTerms = question
+    .replace(/[^\w\s\.-]/g, ' ')
+    .split(/\s+/)
+    .filter(t => t.length >= 3 && !stopWords.has(t.toLowerCase()));
+
+  const matchedSnippets: Array<{ file: string; line: number; snippet: string }> = [];
+  const matchedDocs: Array<{ file: string; excerpt: string }> = [];
+
+  const IGNORE_DIRS = new Set(['.git', 'node_modules', 'dist', 'build', '.swarm', '.gemini', 'target', 'bin', 'obj']);
+  const CODE_EXTS = new Set(['.c', '.h', '.cpp', '.hpp', '.vhd', '.vhdl', '.s', '.asm', '.py', '.ts', '.js', '.json', '.md', '.txt', '.ld', '.inc', '.rsc']);
+
+  async function walk(dir: string, depth: number = 0) {
+    if (depth > 12 || matchedSnippets.length >= 40) return;
+    try {
+      const entries = await fs.promises.readdir(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (matchedSnippets.length >= 40) break;
+        if (entry.isDirectory()) {
+          if (IGNORE_DIRS.has(entry.name) || entry.name.startsWith('.')) continue;
+          await walk(path.join(dir, entry.name), depth + 1);
+        } else if (entry.isFile()) {
+          const ext = path.extname(entry.name).toLowerCase();
+          if (!CODE_EXTS.has(ext)) continue;
+
+          const fullPath = path.join(dir, entry.name);
+          const relativePath = path.relative(workspaceRoot, fullPath).replace(/\\/g, '/');
+
+          try {
+            const stat = await fs.promises.stat(fullPath);
+            if (stat.size > 5 * 1024 * 1024 || stat.size === 0) continue;
+
+            const content = await fs.promises.readFile(fullPath, 'utf8');
+            const lowerContent = content.toLowerCase();
+
+            // Check if any search terms match
+            const matchingTerms = rawTerms.filter(term => lowerContent.includes(term.toLowerCase()));
+            if (matchingTerms.length > 0) {
+              const lines = content.split('\n');
+              for (let i = 0; i < lines.length && matchedSnippets.length < 40; i++) {
+                const lineLower = lines[i].toLowerCase();
+                if (matchingTerms.some(term => lineLower.includes(term.toLowerCase()))) {
+                  const startLine = Math.max(0, i - 2);
+                  const endLine = Math.min(lines.length - 1, i + 3);
+                  const excerpt = lines.slice(startLine, endLine + 1).join('\n');
+                  matchedSnippets.push({
+                    file: relativePath,
+                    line: i + 1,
+                    snippet: excerpt.slice(0, 600),
+                  });
+                  i = endLine; // skip ahead to avoid overlapping windows
+                }
+              }
+
+              if (ext === '.md' || ext === '.h' || ext === '.vhdl' || ext === '.vhd') {
+                matchedDocs.push({
+                  file: relativePath,
+                  excerpt: content.slice(0, 1500),
+                });
+              }
+            }
+          } catch {}
+        }
+      }
+    } catch {}
+  }
+
+  await walk(workspaceRoot);
+
+  if (matchedSnippets.length === 0 && matchedDocs.length === 0) {
+    return "No directly matching definitions or documentation found in local codebase.";
+  }
+
+  // Synthesize local facts using Gemini Flash
+  const contextSections = [
+    `## Relevant Local Code Snippets (${matchedSnippets.length} matches across workspace):`,
+    ...matchedSnippets.slice(0, 20).map(m => `### File: \`${m.file}\` (around line ${m.line})\n\`\`\`\n${m.snippet}\n\`\`\``),
+  ];
+
+  if (matchedDocs.length > 0) {
+    contextSections.push(`\n## Relevant Document/Header Excerpts:\n` + matchedDocs.slice(0, 4).map(d => `### \`${d.file}\`\n\`\`\`\n${d.excerpt}\n\`\`\``).join('\n'));
+  }
+
+  const prompt = `You are an expert engineer inspecting a local embedded systems / hardware / software repository.
+Answer the following question directly and factually using ONLY the provided local codebase and document excerpts.
+If the information is clearly specified in the local files (e.g. struct layouts, RAM mappings, register addresses, memory sizes, VHDL entity ports), state it with exact references to the filenames and lines.
+If the excerpts do not contain enough info, state clearly what is found and what is missing.
+
+Question: ${question}
+
+${contextSections.join('\n\n')}`;
+
+  try {
+    const summaryResponse = await context.multiAgentGeminiClient.sendOneShotMessage(
+      prompt,
+      { model: DEFAULT_GEMINI_FLASH_MODEL, signal: context.signal }
+    );
+    const text = summaryResponse?.text || '';
+    return removeBacktickFences(text).trim();
+  } catch (err: any) {
+    return contextSections.join('\n\n').slice(0, 3000);
+  }
 }
  
 /**
@@ -117,7 +201,7 @@ export const factFinderTool: MultiAgentTool = {
   name: 'FACTFINDER',
  
   async execute(params: Record<string, string>, context: MultiAgentToolContext): Promise<MultiAgentToolResult> {
-    const question = params.question;
+    const question = params.question || params.query || params.prompt || params.text || (typeof params === 'string' ? params : JSON.stringify(params));
     const toolPrefix = await getAssetString('tool-prefix');
  
     // Consistent logging helper

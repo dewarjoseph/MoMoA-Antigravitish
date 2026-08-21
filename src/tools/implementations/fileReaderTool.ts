@@ -37,7 +37,8 @@ export const fileReaderTool: MultiAgentTool = {
    * @returns A promise that resolves to the file's content or an error message.
    */
   async execute(params: Record<string, string>, context: MultiAgentToolContext): Promise<MultiAgentToolResult> {
-    const providedFilename = params.filename;
+    const rawFilename = params.filename || params.path || params.file || (typeof params === 'string' ? params : '');
+    const providedFilename = String(rawFilename).trim();
 
     if (!providedFilename) {
       return {
@@ -51,14 +52,13 @@ export const fileReaderTool: MultiAgentTool = {
       ...Array.from(context.binaryFileMap.keys()).map(key => [key, ''] as [string, string])
     ]);
 
-    // const filename = await fileNameLookup(providedFilename, allFilesMap, context.multiAgentGeminiClient);
     let filename = providedFilename.trim();
     
-    if (!allFilesMap.has(filename)) {
-        // File not found. NOW, let's try to find a suggestion.
+    if (!allFilesMap.has(filename) && !context.fileMap.has(filename) && !context.binaryFileMap.has(filename)) {
+        // File not found in cache. Let's try to find a suggestion.
         const suggestion = await fileNameLookup(filename, allFilesMap, context.multiAgentGeminiClient);
 
-        if (suggestion && suggestion !== filename && allFilesMap.has(suggestion)) {
+        if (suggestion && suggestion !== filename && (allFilesMap.has(suggestion) || context.fileMap.has(suggestion))) {
             return {
                 result: `File '${filename}' was not found. Did you mean '${suggestion}'?`
             };

@@ -49,7 +49,8 @@ export const askExpertTool: MultiAgentTool = {
         context.overseer?.addLog(message);
     };
 
-    const question = params.question;
+    const rawQuestion = params.question || params.query || params.prompt || params.text || (typeof params === 'string' ? params : (params ? JSON.stringify(params) : ''));
+    const question = (typeof rawQuestion === 'string' ? rawQuestion : String(rawQuestion || '')).trim();
 
     updateLog(`${this.displayName} Invoked`);
 
@@ -57,10 +58,16 @@ export const askExpertTool: MultiAgentTool = {
       type: 'PROGRESS_UPDATE',
       message: `Getting additional guidance from an 'Expert' (Spoiler: It's a bigger LLM with a special prompt).`,
     });
+
+    if (!question) {
+      return {
+        result: `Error: 'question' or 'query' parameter is missing for ${this.displayName} tool.`,
+      };
+    }
        
     try {      
       let problemSummary = question;
-      let requestedFiles = [];
+      let requestedFiles: string[] = [];
       let fileNamesPlusContentString = "No files were provided.";
   
       const relevantFilesMarker = 'RELEVANT_FILES:';

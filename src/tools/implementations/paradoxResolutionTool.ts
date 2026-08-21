@@ -42,20 +42,25 @@ async execute(params: Record<string, string>, context: MultiAgentToolContext): P
       context.overseer?.addLog(message);
   };
 
-  const question = params.question;
+  const rawQuestion = params.question || params.paradox || params.statement || params.query || params.text || (typeof params === 'string' ? params : (params ? JSON.stringify(params) : ''));
+  const question = (typeof rawQuestion === 'string' ? rawQuestion : String(rawQuestion || '')).trim();
 
   updateLog(`${this.displayName} Invoked`);
 
-  context.sendMessage(JSON.stringify(
-    {
-      type: 'PROGRESS_UPDATE',
-      message: `I've encountered a Paradox, so I'm asking an 'Expert' persona to help me resolve it.`,
-    }
-  ));
+  context.sendMessage({
+    type: 'PROGRESS_UPDATE',
+    message: `I've encountered a Paradox, so I'm asking an 'Expert' persona to help me resolve it.`,
+  });
+
+  if (!question) {
+    return {
+      result: "Error: 'paradox' or 'question' parameter is missing. Please provide the paradox statement to resolve."
+    };
+  }
       
   try {      
     let paradoxToSolve = question;
-    let requestedFiles = [];
+    let requestedFiles: string[] = [];
     let fileNamesPlusContentString = 'No files were provided.';
 
     const relevantFilesMarker = 'RELEVANT_FILES:';
@@ -163,19 +168,34 @@ async execute(params: Record<string, string>, context: MultiAgentToolContext): P
  * @returns The parameter names and corresponding values.
  */
 async extractParameters(invocation: string, _context: MultiAgentToolContext): Promise<ToolParsingResult> {
-  if (invocation.trim()) {
-    const question = invocation.trim();
+  const trimmed = invocation.trim();
+  if (!trimmed) {
     return {
-      success: true, 
-      params: {
-        question
-      }
+      success: false,
+      error: `Invalid syntax for ${this.displayName} Tool. No paradox or question was provided.`
     };
-    } else {
+  }
+
+  try {
+    const parsed = JSON.parse(trimmed);
+    const p = parsed.paradox || parsed.question || parsed.statement || parsed.query || parsed.text;
+    if (p) {
       return {
-        success: false, 
-        error: `Invalid syntax for ${this.displayName} Tool. No paradox or question was provided.`
-      }
+        success: true,
+        params: {
+          question: String(p).trim(),
+          paradox: String(p).trim(),
+        }
+      };
     }
-  }  
+  } catch {}
+
+  return {
+    success: true, 
+    params: {
+      question: trimmed,
+      paradox: trimmed,
+    }
+  };
+}  
 };

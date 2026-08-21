@@ -204,12 +204,20 @@ export const replaceContentBetweenMarkers = (
   return partBefore + replacementString + partAfter;
 };
 
-export async function getFilesAndContent(requestedFiles: {FILENAME: string, DESCRIPTION: string}[], context: MultiAgentToolContext): Promise<string> {
+export async function getFilesAndContent(
+  requestedFiles: Array<{FILENAME: string, DESCRIPTION?: string} | string>, 
+  context: MultiAgentToolContext
+): Promise<string> {
   const fileContentPrefix = await getAssetString('file-content-prefix');
   const fileContentSuffix = await getAssetString('file-content-suffix');
 
   let result = '--No Files--';
   if (requestedFiles && requestedFiles.length > 0 && (context.fileMap || context.binaryFileMap)) {
+    const normalizedFiles: Array<{FILENAME: string, DESCRIPTION?: string}> = requestedFiles.map(f => {
+      if (typeof f === 'string') return { FILENAME: f, DESCRIPTION: '' };
+      return f;
+    }).filter(f => f && f.FILENAME);
+
     // Combine text and binary file maps for a comprehensive file lookup.
     const allFilesMap = new Map<string, string>([
       ...context.fileMap,
@@ -218,7 +226,7 @@ export async function getFilesAndContent(requestedFiles: {FILENAME: string, DESC
 
     const fileResults: string[] = [];
 
-    for (const fileObject of requestedFiles) {
+    for (const fileObject of normalizedFiles) {
       if (fileObject && fileObject.FILENAME) {
         let filename = fileObject.FILENAME;
         let description = fileObject?.DESCRIPTION || undefined;
