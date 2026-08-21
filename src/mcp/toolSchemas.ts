@@ -132,12 +132,16 @@ export function getMcpToolSchema(mcpToolName: string, tool: any): Record<string,
         };
     } else if (mcpToolName === 'QIS_INJECT_DATA') {
         return {
-            text: z.string().describe("The text data to inject into the QIS Quantum Glass engine for thermodynamic processing."),
+            text_input: z.string().describe("The text data to inject into the QIS Quantum Glass engine for thermodynamic processing."),
         };
     } else if (mcpToolName === 'QIS_GET_GRAMMAR') {
         return {};
     } else if (mcpToolName === 'QIS_ANALYZE_EPIPHANY') {
         return {};
+    } else if (mcpToolName === 'QIS_MANAGE_SERVER') {
+        return {
+            action: z.enum(['clear_state', 'shutdown']).describe("Action to perform on QIS server: 'clear_state' or 'shutdown'"),
+        };
     } else if (mcpToolName === 'QIS_TUNE_PHYSICS') {
         return {
             wDisorder: z.number().optional().describe("Disorder strength w (w_c ≈ 10 is the glass transition point)."),
@@ -177,7 +181,8 @@ export function getMcpToolSchema(mcpToolName: string, tool: any): Record<string,
         };
     } else if (mcpToolName === 'SEARCH_MCP_REGISTRY') {
         return {
-            capability: z.string().describe("Description of the capability to search for."),
+            capability: z.string().optional().describe("Description of the capability to search for."),
+            query: z.string().optional().describe("Alias for capability query string."),
             autoInstall: z.boolean().optional().describe("Whether to auto-install the best match (requires HITL approval)."),
         };
     } else if (mcpToolName === 'TELEMETRY_DASHBOARD') {

@@ -113,6 +113,11 @@ export class LazyMap extends Map<string, string> {
     return super.delete(key);
   }
 
+  override get size(): number {
+    const allKeys = new Set([...this.knownKeys, ...super.keys()]);
+    return allKeys.size;
+  }
+
   override *entries(): any {
     for (const key of this.knownKeys) {
       const val = this.get(key);
@@ -130,6 +135,16 @@ export class LazyMap extends Map<string, string> {
   override *keys(): any {
     for (const key of this.knownKeys) yield key;
     for (const key of super.keys()) if (!this.knownKeys.has(key)) yield key;
+  }
+
+  override *values(): any {
+    for (const [, val] of this.entries()) yield val;
+  }
+
+  override forEach(callback: (value: string, key: string, map: Map<string, string>) => void, thisArg?: any): void {
+    for (const [key, val] of this.entries()) {
+      callback.call(thisArg, val, key, this);
+    }
   }
 }
 

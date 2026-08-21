@@ -201,30 +201,85 @@ export async function createMcpServer(
                   }]
               };
           } else if (mcpToolName === 'PARADOX') {
+              const q = args.paradox || args.question || args.statement || args.query || args.text || (typeof args === 'string' ? args : '');
               executeParams = {
                   ...executeParams,
-                  question: args.paradox || args.question || args.statement || args.query,
-                  paradox: args.paradox || args.question || args.statement || args.query,
+                  question: q,
+                  paradox: q,
               };
           } else if (mcpToolName === 'FACTFINDER') {
+              const q = args.question || args.query || args.prompt || args.text || (typeof args === 'string' ? args : '');
               executeParams = {
                   ...executeParams,
-                  question: args.question || args.query || args.prompt || args.text,
+                  question: q,
+                  query: q,
               };
           } else if (mcpToolName === 'FILESEARCH_query') {
+              const q = args.query || args.search || args.pattern || args.text || (typeof args === 'string' ? args : '');
               executeParams = {
                   ...executeParams,
-                  query: args.query || args.search || args.pattern || args.text,
+                  query: q,
               };
           } else if (mcpToolName === 'QUERY_HIVE_MIND') {
+              const q = args.query || args.search || args.text || (typeof args === 'string' ? args : '');
               executeParams = {
                   ...executeParams,
-                  query: args.query || args.search || args.text,
+                  query: q,
               };
           } else if (mcpToolName === 'PHONEAFRIEND') {
+              const q = args.question || args.query || args.prompt || args.text || (typeof args === 'string' ? args : '');
               executeParams = {
                   ...executeParams,
-                  question: args.question || args.query || args.prompt || args.text,
+                  question: q,
+              };
+          } else if (mcpToolName === 'DOC_READ' || mcpToolName === 'DOC_REVERT' || mcpToolName === 'LINT') {
+              const f = args.filename || args.path || args.file || args.targetFile || (typeof args === 'string' ? args : '');
+              executeParams = {
+                  ...executeParams,
+                  filename: f,
+              };
+          } else if (mcpToolName === 'DOC_EDIT') {
+              const f = args.filename || args.path || args.file || args.targetFile || '';
+              const e = args.editRequest || args.edit || args.content || args.instruction || '';
+              executeParams = {
+                  ...executeParams,
+                  filename: f,
+                  editRequest: e,
+              };
+          } else if (mcpToolName === 'QIS_INJECT_DATA') {
+              const t = args.text_input || args.text || args.input || args.data || '';
+              executeParams = {
+                  ...executeParams,
+                  text_input: t,
+              };
+          } else if (mcpToolName === 'QIS_MANAGE_SERVER') {
+              const a = args.action || args.command || '';
+              executeParams = {
+                  ...executeParams,
+                  action: a,
+              };
+          } else if (mcpToolName === 'SEARCH_MCP_REGISTRY') {
+              const cap = args.capability || args.query || args.search || '';
+              executeParams = {
+                  ...executeParams,
+                  capability: cap,
+              };
+          } else if (mcpToolName === 'URL_FETCH') {
+              const u = args.url || args.targetUrl || (typeof args === 'string' ? args : '');
+              executeParams = {
+                  ...executeParams,
+                  url: u,
+              };
+          } else if (mcpToolName === 'MOVE_FILE_OR_FOLDER_SOURCE') {
+              executeParams = {
+                  ...executeParams,
+                  source: args.source || args.from || args.src || '',
+                  destination: args.destination || args.to || args.dest || '',
+              };
+          } else if (mcpToolName === 'UPDATE_RESEARCH_LOG') {
+              executeParams = {
+                  ...executeParams,
+                  entry: args.entry || args.log || args.message || args.text || '',
               };
           }
           

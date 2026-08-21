@@ -34,13 +34,10 @@ import { fileNameLookup } from '../../utils/fileNameLookup.js';
  * @returns The full path to the temporary file.
  */
 function getFullFilePath(sessionId: string, filename: string): string {
-    // Correctly uses the system temp directory (usually /tmp in Cloud Run)
     const systemTempDir = tmpdir();
-    
-    // Structure: /tmp/momoa_lint/<sessionId>/<filename>
-    // Adding 'momoa_lint' namespace prevents collisions with other tools using /tmp
+    const sanitizedFilename = filename.replace(/^[a-zA-Z]:[/\\]/, '').replace(/^[/\\]+/, '');
     const tempDir = path.join(systemTempDir, 'momoa_lint', sessionId);
-    return path.join(tempDir, filename);
+    return path.join(tempDir, sanitizedFilename);
 }
 
 /**

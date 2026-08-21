@@ -30,6 +30,34 @@ export interface EngineResponse {
     telemetry_dump?: any;
 }
 
+export function findTrainServerScript(): string | null {
+    const workDir = process.env.MOMO_WORKING_DIR || process.cwd();
+    const candidates = [
+        path.resolve(workDir, '../QIS/train_server.py'),
+        path.resolve(workDir, 'train_server.py'),
+        'C:/Users/Joe/source/QIS/train_server.py',
+        path.resolve(__dirname, '../../../../QIS/train_server.py'),
+    ];
+    for (const c of candidates) {
+        if (fs.existsSync(c)) return c;
+    }
+    return null;
+}
+
+export function findRenderScript(): string | null {
+    const workDir = process.env.MOMO_WORKING_DIR || process.cwd();
+    const candidates = [
+        path.resolve(workDir, '../QIS/render_epiphany.py'),
+        path.resolve(workDir, 'render_epiphany.py'),
+        'C:/Users/Joe/source/QIS/render_epiphany.py',
+        path.resolve(__dirname, '../../../../QIS/render_epiphany.py'),
+    ];
+    for (const c of candidates) {
+        if (fs.existsSync(c)) return c;
+    }
+    return null;
+}
+
 export async function ensureTrainServerRunning(localStore: LocalStoreManager): Promise<void> {
     const uniqueId = crypto.randomUUID();
     const requestFilePath = `.swarm/ipc/req_status_${uniqueId}.json`;
@@ -38,24 +66,34 @@ export async function ensureTrainServerRunning(localStore: LocalStoreManager): P
     localStore.writeState(requestFilePath, { timestamp: Date.now() });
     
     let running = false;
-    for (let i = 0; i < 15; i++) {
+    for (let i = 0; i < 10; i++) {
         if (localStore.readState(responseFilePath)) {
             running = true;
             break;
         }
-        await new Promise(r => setTimeout(r, 100));
+        await new Promise(r => setTimeout(r, 50));
     }
     
     localStore.deleteFile(requestFilePath);
     localStore.deleteFile(responseFilePath);
     
     if (!running) {
-        console.error('[QIS] train_server.py not responding. Spawning...');
-        const workDir = process.env.MOMO_WORKING_DIR || process.cwd();
-        const absoluteTrainServerPath = path.resolve(workDir, '../QIS/train_server.py');
-        const trainServerCwd = path.dirname(absoluteTrainServerPath);
-        processRegistry.spawn('py', [absoluteTrainServerPath], { cwd: trainServerCwd });
-        await new Promise(r => setTimeout(r, 2000));
+        const scriptPath = findTrainServerScript();
+        if (scriptPath) {
+            console.error(`[QIS] train_server.py not responding. Spawning from: ${scriptPath}`);
+            const trainServerCwd = path.dirname(scriptPath);
+            const isWin = process.platform === 'win32';
+            const cmd = isWin ? 'py' : 'python3';
+            const args = isWin ? ['-3', scriptPath] : [scriptPath];
+            try {
+                processRegistry.spawn(cmd, args, { cwd: trainServerCwd, shell: isWin });
+                await new Promise(r => setTimeout(r, 1000));
+            } catch (spawnErr) {
+                console.error(`[QIS] Failed to spawn train_server.py:`, spawnErr);
+            }
+        } else {
+            console.error('[QIS] train_server.py script not found in candidate paths.');
+        }
     }
 }
 
@@ -86,8 +124,8 @@ export const qisInjectDataTool: MultiAgentTool = {
         const uniqueId = crypto.randomUUID();
         const requestFilePath = `.swarm/ipc/req_inject_text_${uniqueId}.json`;
         const responseFilePath = `.swarm/ipc/res_${uniqueId}.json`;
-        const pollingIntervalMs = 100;
-        const maxPollingTimeMs = 1200000; // 20 minutes
+        const pollingIntervalMs = 50;
+        const maxPollingTimeMs = 5000; // 5 seconds bounded timeout
 
         try {
             // 1. Write request file
@@ -111,7 +149,7 @@ export const qisInjectDataTool: MultiAgentTool = {
             }
 
             if (!responseData) {
-                throw new Error(`Timeout: No response file found at ${responseFilePath} within ${maxPollingTimeMs}ms.`);
+                throw new Error(`Timeout: QIS engine train_server.py did not respond within ${maxPollingTimeMs}ms.`);
             }
 
             // 3. Process response
@@ -160,8 +198,8 @@ export const qisGetGrammarTool: MultiAgentTool = {
         const uniqueId = crypto.randomUUID();
         const requestFilePath = `.swarm/ipc/req_grammar_${uniqueId}.json`;
         const responseFilePath = `.swarm/ipc/res_${uniqueId}.json`;
-        const pollingIntervalMs = 100;
-        const maxPollingTimeMs = 1200000; // 20 minutes
+        const pollingIntervalMs = 50;
+        const maxPollingTimeMs = 5000; // 5 seconds bounded timeout
 
         try {
             // 1. Write request file (empty or with a timestamp as no specific params are needed)
@@ -184,7 +222,7 @@ export const qisGetGrammarTool: MultiAgentTool = {
             }
 
             if (!responseData) {
-                throw new Error(`Timeout: No response file found at ${responseFilePath} within ${maxPollingTimeMs}ms.`);
+                throw new Error(`Timeout: QIS engine train_server.py did not respond within ${maxPollingTimeMs}ms.`);
             }
 
             // 3. Process response
@@ -235,14 +273,13 @@ export const qisAnalyzeEpiphanyTool: MultiAgentTool = {
         const uniqueId = crypto.randomUUID();
         const requestFilePath = `.swarm/ipc/req_analyze_${uniqueId}.json`;
         const responseFilePath = `.swarm/ipc/res_${uniqueId}.json`;
-        const pollingIntervalMs = 100;
-        const maxPollingTimeMs = 1200000; // 20 minutes
+        const pollingIntervalMs = 50;
+        const maxPollingTimeMs = 5000; // 5 seconds bounded timeout
 
         try {
             // 1. Write request file
             const requestData = {
                 timestamp: Date.now(),
-                // Add any other parameters needed by the Python backend for analysis
             };
             localStore.writeState(requestFilePath, requestData);
             console.error(`[QIS_ANALYZE_EPIPHANY] Request file written to ${requestFilePath}`);
@@ -260,38 +297,37 @@ export const qisAnalyzeEpiphanyTool: MultiAgentTool = {
             }
 
             if (!responseData) {
-                throw new Error(`Timeout: No response file found at ${responseFilePath} within ${maxPollingTimeMs}ms.`);
+                throw new Error(`Timeout: QIS engine train_server.py did not respond within ${maxPollingTimeMs}ms.`);
             }
 
             // 3. Process response and save topology frame
-            const data: any = responseData; // Assuming the response file contains the NNSD matrix and other data
+            const data: any = responseData;
             
             let message = "Successfully generated NNSD matrix statistics.";
             if (data.status === "error") {
                 message = data.detail;
             } else if (data.status === "success") {
-                message = `Riemann Mapping Extracted. GUE KL Divergence: ${data.metrics.kl_divergence_gue.toFixed(4)} | GOE KL Divergence: ${data.metrics.kl_divergence_goe.toFixed(4)}`;
-                localStore.writeTopologyFrame(data); // Save the topology frame
+                message = `Riemann Mapping Extracted. GUE KL Divergence: ${data.metrics?.kl_divergence_gue?.toFixed(4) ?? 'N/A'} | GOE KL Divergence: ${data.metrics?.kl_divergence_goe?.toFixed(4) ?? 'N/A'}`;
+                localStore.writeTopologyFrame(data);
 
                 // Orchestrate render_epiphany.py to generate the GIF
                 try {
-                    const workDir = process.env.MOMO_WORKING_DIR || process.cwd();
-                    const absoluteRenderScriptPath = path.resolve(workDir, '../QIS/render_epiphany.py');
-                    const renderScriptCwd = path.dirname(absoluteRenderScriptPath);
-
-                    console.error(`[QIS_ANALYZE_EPIPHANY] Spawning render_epiphany.py from: ${renderScriptCwd}`);
-                    const child = processRegistry.spawn(
-                        'py',
-                        [absoluteRenderScriptPath, '--source', '.swarm/frames', '--out', '.swarm/epiphany_evolution.gif'],
-                        { cwd: renderScriptCwd }
-                    );
-                    child.on('error', (err) => {
-                        console.error(`[QIS_ANALYZE_EPIPHANY] Failed to spawn render_epiphany.py: ${err.message}`);
-                    });
-                    console.error(`[QIS_ANALYZE_EPIPHANY] render_epiphany.py spawned.`);
+                    const renderScriptPath = findRenderScript();
+                    if (renderScriptPath) {
+                        const renderScriptCwd = path.dirname(renderScriptPath);
+                        console.error(`[QIS_ANALYZE_EPIPHANY] Spawning render_epiphany.py from: ${renderScriptCwd}`);
+                        const isWin = process.platform === 'win32';
+                        const cmd = isWin ? 'py' : 'python3';
+                        const args = isWin 
+                            ? ['-3', renderScriptPath, '--source', '.swarm/frames', '--out', '.swarm/epiphany_evolution.gif']
+                            : [renderScriptPath, '--source', '.swarm/frames', '--out', '.swarm/epiphany_evolution.gif'];
+                        const child = processRegistry.spawn(cmd, args, { cwd: renderScriptCwd, shell: isWin });
+                        child.on('error', (err) => {
+                            console.error(`[QIS_ANALYZE_EPIPHANY] Failed to spawn render_epiphany.py: ${err.message}`);
+                        });
+                    }
                 } catch (spawnErr: any) {
                     console.error(`[QIS_ANALYZE_EPIPHANY] Failed to spawn render_epiphany.py: ${spawnErr.message}`);
-                    // Do not re-throw, allow the analysis to complete even if GIF generation fails
                 }
             }
 

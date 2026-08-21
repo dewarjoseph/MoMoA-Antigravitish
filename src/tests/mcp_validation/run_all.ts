@@ -27,6 +27,7 @@ const SUITES: TestSuite[] = [
   { name: 'Test D: Bi-Directional MCP Host', file: 'test_agent_as_mcp.ts' },
   { name: 'Test E: Dynamic MCP Hot-Plug', file: 'test_mcp_hotplug.ts' },
   { name: 'Test F: Architecture Local Assumption Check', file: 'test_no_local_assumptions.ts' },
+  { name: 'Test G: Live MoMo Overseer MCP Tool Verification', file: 'test_live_mcp_tools.ts' },
   { name: 'E2E Crucible: Self-Healing Integration', file: 'test_e2e_crucible.ts' },
 ];
 
@@ -51,7 +52,6 @@ async function runSuite(suite: TestSuite): Promise<{ passed: boolean; output: st
     child.stderr?.on('data', d => {
       const text = d.toString();
       output += text;
-      // Only forward non-noisy stderr
       if (!text.includes('ExperimentalWarning') && !text.includes('--trace-warnings')) {
         process.stderr.write(text);
       }
