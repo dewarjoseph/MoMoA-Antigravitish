@@ -272,20 +272,27 @@ export const LintTool: MultiAgentTool = {
           }
       }
 
+      const repoRoot = process.env.MOMO_WORKING_DIR || (process.cwd().includes('Antigravity IDE') ? path.resolve(__dirname, '../../..') : process.cwd());
+      const isWin = process.platform === 'win32';
       let linterCommand: string | null = null;
       let linterArgs: string[] = [];
 
       switch (language) {
         case 'python':
-          linterCommand = 'python3'; 
-          linterArgs = ['-m', 'flake8', fullFileName, '--config', 'linter-tool-definition-files/.flake8', '--show-source'];
-        break;        
+          linterCommand = isWin ? 'py' : 'python3'; 
+          linterArgs = isWin
+            ? ['-3', '-m', 'flake8', fullFileName, '--config', path.resolve(repoRoot, 'linter-tool-definition-files/.flake8'), '--show-source']
+            : ['-m', 'flake8', fullFileName, '--config', path.resolve(repoRoot, 'linter-tool-definition-files/.flake8'), '--show-source'];
+          break;        
         case 'javascript':
           // 1. Point to Hub's Binary (Absolute Path)
-          linterCommand = path.resolve('node_modules', '.bin', 'eslint');
+          const eslintBin = isWin 
+            ? path.resolve(repoRoot, 'node_modules', '.bin', 'eslint.cmd')
+            : path.resolve(repoRoot, 'node_modules', '.bin', 'eslint');
+          linterCommand = eslintBin;
           
           // 2. Point to Hub's Config (Absolute Path)
-          const configPath = path.resolve('linter-tool-definition-files', 'eslint.config.js');
+          const configPath = path.resolve(repoRoot, 'linter-tool-definition-files', 'eslint.config.js');
           
           // 3. Target the file by BASENAME (since we will be inside the temp dir)
           linterArgs = [
