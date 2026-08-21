@@ -11,3 +11,7 @@ changes.patch
 # Ralph Loop operational state
 progress.txt
 .ouroboros_state.json
+
+# Private architecture notes
+GOD_AGENT_PATTERN.md
+*.private.md
