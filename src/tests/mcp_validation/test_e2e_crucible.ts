@@ -54,8 +54,9 @@ async function executeScript(
 ): Promise<{ stdout: string; stderr: string; exitCode: number | null }> {
   return new Promise((resolve, reject) => {
     const isWin = os.platform() === 'win32';
-    const cmd = isWin ? 'python' : 'python3';
-    const child = spawn(cmd, [path.basename(scriptPath)], {
+    const cmd = isWin ? 'py' : 'python3';
+    const args = isWin ? ['-3', path.basename(scriptPath)] : [path.basename(scriptPath)];
+    const child = spawn(cmd, args, {
       cwd,
       shell: true,
       env: { ...process.env, PYTHONUNBUFFERED: '1' },

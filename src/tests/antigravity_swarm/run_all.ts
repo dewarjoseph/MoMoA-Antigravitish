@@ -33,6 +33,7 @@ async function runSuite(suite: TestSuite): Promise<{ passed: boolean; output: st
   return new Promise((resolve) => {
     const child = spawn(tsxCmd, ['-y', 'tsx', suitePath], {
       stdio: ['pipe', 'pipe', 'pipe'],
+      shell: isWin,
       env: { ...process.env },
       cwd: path.resolve(suiteDir, '..', '..', '..'),
     });

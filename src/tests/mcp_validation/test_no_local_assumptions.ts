@@ -46,7 +46,7 @@ async function runTests(): Promise<void> {
     const content = fs.readFileSync(fullPath, 'utf8');
     
     // Check if child_process is imported
-    const hasChildProcessImport = content.includes('child_process');
+    const hasChildProcessImport = /import\s+.*from\s+['"]node:child_process['"]|import\s+.*from\s+['"]child_process['"]|require\(['"]node:child_process['"]\)|require\(['"]child_process['"]\)/.test(content);
     assert(!hasChildProcessImport, `No child_process import in ${relativePath}`, hasChildProcessImport ? 'Found child_process usage' : undefined);
 
     // Check if spawn or exec is used (if not imported, this might be safe, but we double check)

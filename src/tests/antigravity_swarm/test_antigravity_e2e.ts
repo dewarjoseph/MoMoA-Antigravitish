@@ -163,9 +163,10 @@ async function runE2E(): Promise<void> {
 
   const spawnTime = performance.now();
   const isWin = os.platform() === 'win32';
-  const pythonCmd = isWin ? 'python' : 'python3';
+  const pythonCmd = isWin ? 'py' : 'python3';
+  const pythonArgs = isWin ? ['-3', scriptPath] : [scriptPath];
 
-  const child = spawn(pythonCmd, [scriptPath], {
+  const child = spawn(pythonCmd, pythonArgs, {
     stdio: ['ignore', 'pipe', 'pipe'],
     shell: true,
     env: { ...process.env, PYTHONUNBUFFERED: '1' },

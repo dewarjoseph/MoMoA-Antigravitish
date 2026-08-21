@@ -25,6 +25,14 @@ export class LazyMap extends Map<string, string> {
 
   private resolveCandidatePath(key: string): string | null {
     if (!key) return null;
+
+    // Check MIME type compatibility: binary map only resolves binary files, text map only resolves text/code files
+    const mime = getBinaryMimeType(key);
+    const isBinaryType = mime !== null && !mime.startsWith('text/');
+    if (this.isBinary !== isBinaryType) {
+      return null;
+    }
+
     const normalizedKey = key.replace(/\\/g, '/');
 
     // 1. Direct absolute path check

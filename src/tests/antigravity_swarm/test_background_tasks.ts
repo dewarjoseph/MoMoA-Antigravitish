@@ -64,9 +64,10 @@ function spawnBackgroundJob(
 
   const startedAt = performance.now();
   const isWin = os.platform() === 'win32';
-  const cmd = isWin ? 'python' : 'python3';
+  const cmd = isWin ? 'py' : 'python3';
+  const args = isWin ? ['-3', scriptPath] : [scriptPath];
 
-  const child = spawn(cmd, [scriptPath], {
+  const child = spawn(cmd, args, {
     stdio: ['ignore', 'pipe', 'pipe'],
     shell: true,
     env: { ...process.env, PYTHONUNBUFFERED: '1' },
