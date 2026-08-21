@@ -154,11 +154,12 @@ export const qisInjectDataTool: MultiAgentTool = {
 
             // 3. Process response
             const data = responseData;
-            const res: EngineResponse = { success: data.status === 'success', result: JSON.stringify(data), telemetry_dump: data };
+            const isSuccess = data.status === 'success' || data.status === 'Accepted';
+            const res: EngineResponse = { success: isSuccess, result: JSON.stringify(data), telemetry_dump: data };
 
             if (span && context.tracer) {
-                if (data.status === 'error') {
-                    context.tracer.endSpan(span, SpanStatus.ERROR, { errorMessage: data.detail });
+                if (!isSuccess || data.status === 'error') {
+                    context.tracer.endSpan(span, SpanStatus.ERROR, { errorMessage: data.detail || 'Injection error' });
                 } else {
                     context.tracer.endSpan(span, SpanStatus.OK);
                 }
