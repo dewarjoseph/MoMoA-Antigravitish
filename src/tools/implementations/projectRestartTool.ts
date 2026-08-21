@@ -23,7 +23,7 @@ export const restartProjectTool: MultiAgentTool = {
   endToken: '}',
 
   async execute(params: Record<string, string>, context: MultiAgentToolContext): Promise<MultiAgentToolResult> {
-    const guidance = params.guidance;
+    const guidance = params.guidance || params.instruction;
     if (!guidance || guidance.trim() === '') {
       return { 
         result: "---Error: 'guidance' parameter is missing or empty. You MUST provide clear guidance for the restart.---" 
