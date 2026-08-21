@@ -1,10 +1,37 @@
 {
   "name": "momo-overseer",
   "version": "1.0.0",
-  "description": "Headless CLI daemon and MCP server for autonomous Jules swarm orchestration",
+  "description": "Headless CLI daemon and Model Context Protocol (MCP) server for autonomous multi-agent swarm orchestration, quantum inference symbiogenesis, and zero-RAM repository reasoning.",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "agentic-ai",
+    "swarm-intelligence",
+    "gemini",
+    "jules-api",
+    "qis",
+    "quantum-inference",
+    "zero-ram",
+    "ast-analyzer",
+    "self-healing-code",
+    "antigravity"
+  ],
+  "author": "Joseph Dewar <dewarjoseph>",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dewarjoseph/MoMoA-Antigravitish.git"
+  },
+  "bugs": {
+    "url": "https://github.com/dewarjoseph/MoMoA-Antigravitish/issues"
+  },
+  "homepage": "https://github.com/dewarjoseph/MoMoA-Antigravitish#readme",
   "main": "dist/cli.js",
   "bin": {
     "momo-overseer": "dist/cli.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
   },
   "scripts": {
     "build": "rimraf dist && tsc && copyfiles -u 1 \"src/assets/**/*\" dist",
