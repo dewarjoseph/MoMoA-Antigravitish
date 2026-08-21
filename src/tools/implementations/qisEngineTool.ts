@@ -66,7 +66,7 @@ export async function ensureTrainServerRunning(localStore: LocalStoreManager): P
     localStore.writeState(requestFilePath, { timestamp: Date.now() });
     
     let running = false;
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < 40; i++) {
         if (localStore.readState(responseFilePath)) {
             running = true;
             break;
