@@ -16,6 +16,7 @@
 
 import * as path from 'path';
 import * as fs from 'fs/promises';
+import * as fsSync from 'fs';
 import * as os from 'os';
 import { spawn } from 'child_process';
 import { MultiAgentTool } from '../multiAgentTool.js';
@@ -220,21 +221,27 @@ export const OptimizerTool: MultiAgentTool = {
 
     // 3. File Staging
     const filesToStage = [{name:'Evaluator', path:evalScript}, ...dependencies.map(d=>({name:'Dep', path:d}))];
-    const allFilesMap = new Map<string, string>([...context.fileMap, ...Array.from(context.binaryFileMap.keys()).map(k=>[k,''] as [string,string])]);
     
     // Change type definition if necessary, or simply treat as any for the loop
     const fileContents: Record<string, string | Buffer> = {};
     
     for (const file of filesToStage) {
-        if (!allFilesMap.has(file.path)) return { result: `File '${file.path}' not found.` };
-        
-        if (context.fileMap.has(file.path)) {
-            fileContents[file.path] = context.fileMap.get(file.path) || "";
-        } else if (context.binaryFileMap.has(file.path)) {
-            fileContents[file.path] = Buffer.from(context.binaryFileMap.get(file.path) || "", 'base64');
+        let content: string | Buffer | undefined = undefined;
+        if (context.fileMap && context.fileMap.has(file.path)) {
+            content = context.fileMap.get(file.path);
+        } else if (context.binaryFileMap && context.binaryFileMap.has(file.path)) {
+            content = Buffer.from(context.binaryFileMap.get(file.path) || "", 'base64');
         } else {
-             fileContents[file.path] = "";
+            const resolvedPath = path.isAbsolute(file.path) ? file.path : path.resolve(process.cwd(), file.path);
+            if (fsSync.existsSync(resolvedPath)) {
+                content = fsSync.readFileSync(resolvedPath, 'utf8');
+            }
         }
+
+        if (content === undefined) {
+            return { result: `File '${file.path}' not found.` };
+        }
+        fileContents[file.path] = content;
     }
 
     let tempDir = '';
